@@ -1,0 +1,184 @@
+// Organização Fácil — Schema Prisma
+// Provider: MySQL / MariaDB
+// Valores monetários: DECIMAL(12,2) — nunca float
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+// ─── Enums ────────────────────────────────────────────────────────────────
+
+enum UserPlan {
+  FREE
+  PRO
+  BUSINESS
+}
+
+enum TaskStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum TaskPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum ProjectStatus {
+  PLANNING
+  IN_PROGRESS
+  COMPLETED
+  ON_HOLD
+  CANCELLED
+}
+
+enum FinanceType {
+  INCOME
+  EXPENSE
+}
+
+enum CategoryScope {
+  TASK
+  FINANCE
+  GENERAL
+}
+
+// ─── Models ───────────────────────────────────────────────────────────────
+
+model User {
+  id           String   @id @default(cuid())
+  name         String   @db.VarChar(120)
+  email        String   @unique @db.VarChar(255)
+  passwordHash String   @db.VarChar(255)
+  plan         UserPlan @default(FREE)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  tasks          Task[]
+  projects       Project[]
+  notes          Note[]
+  financeEntries FinanceEntry[]
+  categories     Category[]
+
+  @@index([email])
+  @@map("users")
+}
+
+model Task {
+  id          String       @id @default(cuid())
+  title       String       @db.VarChar(255)
+  description String?      @db.Text
+  status      TaskStatus   @default(PENDING)
+  priority    TaskPriority @default(MEDIUM)
+  dueDate     DateTime?
+  completedAt DateTime?
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  projectId String?
+  project   Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
+
+  categoryId String?
+  category   Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([userId, status])
+  @@index([userId, dueDate])
+  @@index([projectId])
+  @@map("tasks")
+}
+
+model Project {
+  id          String        @id @default(cuid())
+  name        String        @db.VarChar(255)
+  description String?       @db.Text
+  status      ProjectStatus @default(PLANNING)
+  // progress: 0–100, representa percentual de conclusão
+  progress    Int           @default(0)
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  tasks Task[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([userId, status])
+  @@map("projects")
+}
+
+model Note {
+  id      String  @id @default(cuid())
+  title   String  @db.VarChar(255)
+  content String  @db.Text
+  // color: código hex ou nome CSS, ex: "#FEF3C7"
+  color   String? @db.VarChar(30)
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@map("notes")
+}
+
+model FinanceEntry {
+  id          String      @id @default(cuid())
+  type        FinanceType
+  title       String      @db.VarChar(255)
+  description String?     @db.Text
+  // DECIMAL(12,2): suporta até R$ 9.999.999.999,99
+  amount      Decimal     @db.Decimal(12, 2)
+  occurredAt  DateTime
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  categoryId String?
+  category   Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([userId, type])
+  @@index([userId, occurredAt])
+  @@map("finance_entries")
+}
+
+model Category {
+  id    String        @id @default(cuid())
+  name  String        @db.VarChar(100)
+  scope CategoryScope @default(GENERAL)
+  color String?       @db.VarChar(30)
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  tasks          Task[]
+  financeEntries FinanceEntry[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([userId, scope])
+  @@map("categories")
+}
