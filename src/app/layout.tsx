@@ -21,7 +21,7 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="pt-BR" className={`${dmSans.variable} h-full`}>
-      <body className="min-h-full" style={{ fontFamily: "DM Sans, sans-serif" }}>
+      <body className="min-h-full" style={{ fontFamily: "DM Sans, sans-serif" }} suppressHydrationWarning>
         {children}
       </body>
     </html>
