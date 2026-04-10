@@ -46,6 +46,19 @@ enum FinanceType {
   EXPENSE
 }
 
+enum FinanceStatus {
+  CONFIRMED
+  PREDICTED
+  OVERDUE
+}
+
+enum FinanceRecurrence {
+  NONE
+  WEEKLY
+  MONTHLY
+  ANNUAL
+}
+
 enum CategoryScope {
   TASK
   FINANCE
@@ -154,12 +167,16 @@ model FinanceEntry {
   categoryId String?
   category   Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
 
+  status     FinanceStatus     @default(CONFIRMED)
+  recurrence FinanceRecurrence @default(NONE)
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([userId])
   @@index([userId, type])
   @@index([userId, occurredAt])
+  @@index([userId, status])
   @@map("finance_entries")
 }
 
