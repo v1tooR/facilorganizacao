@@ -1,5 +1,5 @@
 /**
- * GET  /api/projects  — lista projetos do usuário
+ * GET  /api/projects  — lista projetos do usuário com contagem de tarefas
  * POST /api/projects  — cria novo projeto (verifica limite do plano)
  */
 
@@ -13,15 +13,32 @@ export async function GET() {
   const { user, error } = await requireAuth();
   if (error) return error;
 
-  const projects = await db.project.findMany({
-    where: { userId: user.id },
-    orderBy: { updatedAt: "desc" },
-    include: {
-      _count: { select: { tasks: true } },
-    },
-  });
+  const [projects, completedCounts] = await Promise.all([
+    db.project.findMany({
+      where: { userId: user.id },
+      orderBy: { updatedAt: "desc" },
+      include: {
+        _count: { select: { tasks: true } },
+      },
+    }),
+    db.task.groupBy({
+      by: ["projectId"],
+      where: { userId: user.id, projectId: { not: null }, status: "COMPLETED" },
+      _count: { id: true },
+    }),
+  ]);
 
-  return NextResponse.json({ projects });
+  const completedMap: Record<string, number> = {};
+  for (const c of completedCounts) {
+    if (c.projectId) completedMap[c.projectId] = c._count.id;
+  }
+
+  return NextResponse.json({
+    projects: projects.map((p) => ({
+      ...p,
+      completedTaskCount: completedMap[p.id] ?? 0,
+    })),
+  });
 }
 
 export async function POST(request: NextRequest) {
@@ -51,13 +68,18 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  const { startDate, dueDate, ...rest } = parsed.data;
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const project = await db.project.create({
     data: {
-      ...parsed.data,
+      ...rest,
+      startDate: startDate ? new Date(startDate) : undefined,
+      dueDate: dueDate ? new Date(dueDate) : undefined,
       userId: user.id,
-    },
+    } as any,
     include: { _count: { select: { tasks: true } } },
   });
 
-  return NextResponse.json({ project }, { status: 201 });
+  return NextResponse.json({ project: { ...project, completedTaskCount: 0 } }, { status: 201 });
 }

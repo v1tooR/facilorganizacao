@@ -1,5 +1,5 @@
 /**
- * GET    /api/projects/[id]  — busca projeto por id
+ * GET    /api/projects/[id]  — busca projeto por id (inclui tarefas)
  * PUT    /api/projects/[id]  — atualiza projeto
  * DELETE /api/projects/[id]  — exclui projeto
  */
@@ -18,14 +18,29 @@ export async function GET(_req: NextRequest, { params }: Params) {
   const { id } = await params;
   const project = await db.project.findFirst({
     where: { id, userId: user.id },
-    include: { _count: { select: { tasks: true } } },
+    include: {
+      _count: { select: { tasks: true } },
+      tasks: {
+        orderBy: [
+          { status: "asc" },
+          { priority: "desc" },
+          { dueDate: "asc" },
+          { createdAt: "desc" },
+        ],
+        include: {
+          category: { select: { id: true, name: true, color: true } },
+        },
+      },
+    },
   });
 
   if (!project) {
     return NextResponse.json({ error: "Projeto não encontrado." }, { status: 404 });
   }
 
-  return NextResponse.json({ project });
+  const completedTaskCount = project.tasks.filter((t) => t.status === "COMPLETED").length;
+
+  return NextResponse.json({ project: { ...project, completedTaskCount } });
 }
 
 export async function PUT(request: NextRequest, { params }: Params) {
@@ -54,13 +69,24 @@ export async function PUT(request: NextRequest, { params }: Params) {
     );
   }
 
+  const { startDate, dueDate, ...rest } = parsed.data;
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const project = await db.project.update({
     where: { id },
-    data: parsed.data,
+    data: {
+      ...rest,
+      ...(startDate !== undefined ? { startDate: startDate ? new Date(startDate) : null } : {}),
+      ...(dueDate !== undefined ? { dueDate: dueDate ? new Date(dueDate) : null } : {}),
+    } as any,
     include: { _count: { select: { tasks: true } } },
   });
 
-  return NextResponse.json({ project });
+  const completedTaskCount = await db.task.count({
+    where: { projectId: id, userId: user.id, status: "COMPLETED" },
+  });
+
+  return NextResponse.json({ project: { ...project, completedTaskCount } });
 }
 
 export async function DELETE(_req: NextRequest, { params }: Params) {

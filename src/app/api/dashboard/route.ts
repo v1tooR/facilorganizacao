@@ -68,10 +68,12 @@ export async function GET() {
       include: { _count: { select: { tasks: true } } },
     }),
 
-    db.note.findMany({
-      where: { userId: user.id },
-      orderBy: { updatedAt: "desc" },
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (db.note as any).findMany({
+      where: { userId: user.id, isArchived: false },
+      orderBy: [{ isPinned: "desc" }, { updatedAt: "desc" }],
       take: 10,
+      select: { id: true, title: true, content: true, color: true, isPinned: true, tags: true },
     }),
 
     // Resumo financeiro do mês atual
@@ -186,11 +188,14 @@ export async function GET() {
       progress: p.progress,
       taskCount: p._count.tasks,
     })),
-    recentNotes: recentNotes.map((n) => ({
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    recentNotes: (recentNotes as any[]).map((n) => ({
       id: n.id,
       title: n.title,
       content: n.content,
       color: n.color,
+      isPinned: n.isPinned ?? false,
+      tags: n.tags ? JSON.parse(n.tags as string) : [],
     })),
   });
 }

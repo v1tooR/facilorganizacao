@@ -65,7 +65,8 @@ export const UpdateTaskSchema = z.object({
   status: z.enum(["PENDING", "IN_PROGRESS", "COMPLETED", "CANCELLED"]).optional(),
   priority: z.enum(["LOW", "MEDIUM", "HIGH", "URGENT"]).optional(),
   dueDate: z.string().datetime({ offset: true }).optional().or(z.literal("")).transform((v) => v === "" ? undefined : v),
-  projectId: z.string().cuid().optional().or(z.literal("")).transform((v) => v === "" ? undefined : v),
+  projectId: z.union([z.string().cuid(), z.literal(""), z.null()]).optional()
+    .transform((v) => v === "" ? undefined : v),
   categoryId: z.string().cuid().optional().or(z.literal("")).transform((v) => v === "" ? undefined : v),
 });
 
@@ -78,6 +79,8 @@ export const CreateProjectSchema = z.object({
   description: z.string().max(5000).optional(),
   status: z.enum(["PLANNING", "IN_PROGRESS", "COMPLETED", "ON_HOLD", "CANCELLED"]).default("PLANNING"),
   progress: z.number().int().min(0).max(100).default(0),
+  startDate: z.string().datetime({ offset: true }).optional().or(z.literal("")).transform((v) => v === "" ? undefined : v),
+  dueDate: z.string().datetime({ offset: true }).optional().or(z.literal("")).transform((v) => v === "" ? undefined : v),
 });
 
 export type CreateProjectInput = z.infer<typeof CreateProjectSchema>;
@@ -87,32 +90,55 @@ export const UpdateProjectSchema = z.object({
   description: z.string().max(5000).optional(),
   status: z.enum(["PLANNING", "IN_PROGRESS", "COMPLETED", "ON_HOLD", "CANCELLED"]).optional(),
   progress: z.number().int().min(0).max(100).optional(),
+  startDate: z.union([z.string().datetime({ offset: true }), z.literal(""), z.null()]).optional()
+    .transform((v) => v === "" ? undefined : v),
+  dueDate: z.union([z.string().datetime({ offset: true }), z.literal(""), z.null()]).optional()
+    .transform((v) => v === "" ? undefined : v),
 });
 
 export type UpdateProjectInput = z.infer<typeof UpdateProjectSchema>;
 
 // ─── Notes ────────────────────────────────────────────────────────────────
 
+const noteColorSchema = z
+  .string()
+  .regex(/^#[0-9A-Fa-f]{3,6}$/, "Cor deve ser um código hex válido.")
+  .optional()
+  .or(z.literal(""))
+  .transform((v) => (v === "" ? undefined : v));
+
+const noteTagsSchema = z
+  .array(z.string().min(1).max(50).trim())
+  .max(10, "Máximo de 10 tags.")
+  .default([]);
+
 export const CreateNoteSchema = z.object({
   title: z.string().min(1, "Título é obrigatório.").max(255).trim(),
-  content: z.string().min(1, "Conteúdo é obrigatório.").max(50000),
-  color: z
+  content: z.string().max(50000).default(""),
+  color: noteColorSchema,
+  tags: noteTagsSchema,
+  isPinned: z.boolean().default(false),
+  projectId: z
     .string()
-    .regex(/^#[0-9A-Fa-f]{3,6}$/, "Cor deve ser um código hex válido.")
-    .optional(),
+    .cuid()
+    .optional()
+    .or(z.literal(""))
+    .transform((v) => (v === "" ? undefined : v)),
 });
 
 export type CreateNoteInput = z.infer<typeof CreateNoteSchema>;
 
 export const UpdateNoteSchema = z.object({
   title: z.string().min(1).max(255).trim().optional(),
-  content: z.string().min(1).max(50000).optional(),
-  color: z
-    .string()
-    .regex(/^#[0-9A-Fa-f]{3,6}$/)
+  content: z.string().max(50000).optional(),
+  color: noteColorSchema,
+  tags: z.array(z.string().min(1).max(50).trim()).max(10).optional(),
+  isPinned: z.boolean().optional(),
+  isArchived: z.boolean().optional(),
+  projectId: z
+    .union([z.string().cuid(), z.literal(""), z.null()])
     .optional()
-    .or(z.literal(""))
-    .transform((v) => v === "" ? undefined : v),
+    .transform((v) => (v === "" ? undefined : v)),
 });
 
 export type UpdateNoteInput = z.infer<typeof UpdateNoteSchema>;

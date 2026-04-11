@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import {
   CheckCircle2, Wallet, FolderKanban, StickyNote,
   Plus, ArrowUpRight, ArrowDownRight, TrendingUp,
@@ -19,7 +19,7 @@ interface DashTask {
 }
 
 interface DashProject { id: string; name: string; status: string; progress: number; taskCount: number; }
-interface DashNote { id: string; title: string; content: string; color: string | null; }
+interface DashNote { id: string; title: string; content: string; color: string | null; tags: string[]; }
 
 interface DashboardData {
   user: { id: string; name: string; email: string; plan: string; planLabel: string; planLimits: { tasks: number; projects: number; notes: number; categories: number } };
@@ -335,12 +335,39 @@ function ProjectDetailModal({ projectId, onClose, onRefresh }: { projectId: stri
 
 // ── Note Detail Modal ────────────────────────────────────────────────────────
 
-interface FullNote { id: string; title: string; content: string; color: string | null; updatedAt: string; }
+function TagEditorInline({ tags, onChange }: { tags: string[]; onChange: (t: string[]) => void }) {
+  const [input, setInput] = useState("");
+  const addTag = () => {
+    const t = input.trim().toLowerCase();
+    if (t && !tags.includes(t) && tags.length < 10) onChange([...tags, t]);
+    setInput("");
+  };
+  return (
+    <div>
+      {tags.length > 0 && (
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 5, marginBottom: 6 }}>
+          {tags.map((tag) => (
+            <span key={tag} style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 12, padding: "3px 8px", borderRadius: 20, background: "#F3F4F6", color: "#374151", fontWeight: 600 }}>
+              #{tag}
+              <button onClick={() => onChange(tags.filter((t) => t !== tag))} style={{ all: "unset", cursor: "pointer", color: "#9CA3AF", display: "flex", lineHeight: 1 }}><X size={10} /></button>
+            </span>
+          ))}
+        </div>
+      )}
+      <div style={{ display: "flex", gap: 6 }}>
+        <input className="input-base" value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addTag(); } }} placeholder="Nova tag… Enter para adicionar" style={{ fontSize: 12.5, flex: 1 }} />
+        <button onClick={addTag} className="btn-secondary" style={{ fontSize: 12, padding: "6px 10px" }}>+</button>
+      </div>
+    </div>
+  );
+}
+
+interface FullNote { id: string; title: string; content: string; color: string | null; tags: string[]; updatedAt: string; }
 
 function NoteDetailModal({ noteId, onClose, onRefresh }: { noteId: string; onClose: () => void; onRefresh: () => void }) {
   const [note, setNote] = useState<FullNote | null>(null);
   const [editing, setEditing] = useState(false);
-  const [form, setForm] = useState({ title: "", content: "", color: "#FEF3C7" });
+  const [form, setForm] = useState({ title: "", content: "", color: "#FEF3C7", tags: [] as string[] });
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState("");
 
@@ -349,7 +376,7 @@ function NoteDetailModal({ noteId, onClose, onRefresh }: { noteId: string; onClo
     if (r.ok) {
       const d = await r.json();
       setNote(d.note);
-      setForm({ title: d.note.title, content: d.note.content, color: d.note.color ?? "#FEF3C7" });
+      setForm({ title: d.note.title, content: d.note.content, color: d.note.color ?? "#FEF3C7", tags: d.note.tags ?? [] });
     }
   }, [noteId]);
 
@@ -384,6 +411,9 @@ function NoteDetailModal({ noteId, onClose, onRefresh }: { noteId: string; onClo
               ))}
             </div>
           </Field>
+          <Field label="Tags">
+            <TagEditorInline tags={form.tags} onChange={(tags) => setForm({ ...form, tags })} />
+          </Field>
           {err && <p style={{ fontSize: 13, color: "#EF4444" }}>{err}</p>}
           <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
             <button onClick={() => setEditing(false)} className="btn-secondary" style={{ fontSize: 13, padding: "9px 18px" }}>Cancelar</button>
@@ -395,6 +425,13 @@ function NoteDetailModal({ noteId, onClose, onRefresh }: { noteId: string; onClo
           <div style={{ background: note.color ?? "#F8FAFC", borderRadius: 12, padding: "20px 22px", marginBottom: 20 }}>
             <h4 style={{ fontSize: 17, fontWeight: 700, color: "#1F2937", marginBottom: 12 }}>{note.title}</h4>
             <p style={{ fontSize: 14, color: "#374151", lineHeight: 1.8, whiteSpace: "pre-wrap" }}>{note.content}</p>
+            {note.tags.length > 0 && (
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 5, marginTop: 14 }}>
+                {note.tags.map((tag) => (
+                  <span key={tag} style={{ fontSize: 12, padding: "3px 8px", borderRadius: 20, background: "rgba(0,0,0,0.09)", color: "#374151", fontWeight: 600 }}>#{tag}</span>
+                ))}
+              </div>
+            )}
             <p style={{ fontSize: 11, color: "rgba(0,0,0,0.3)", marginTop: 14 }}>Atualizada em {new Date(note.updatedAt).toLocaleDateString("pt-BR")}</p>
           </div>
           <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
@@ -505,6 +542,34 @@ export default function DashboardHome({ onNavigate }: { onNavigate: (m: string) 
   const [selectedNoteId, setSelectedNoteId] = useState<string | null>(null);
   const [quickCreate, setQuickCreate] = useState<QuickCreateType | null>(null);
   const [toggling, setToggling] = useState<string | null>(null);
+  const [leftPct, setLeftPct] = useState<number>(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("dash-split");
+      return saved ? parseFloat(saved) : 65;
+    }
+    return 65;
+  });
+  const bentoRef = useRef<HTMLDivElement>(null);
+
+  const startDrag = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    const container = bentoRef.current;
+    if (!container) return;
+    const startX = e.clientX;
+    const startPct = leftPct;
+    const containerW = container.getBoundingClientRect().width;
+    const onMove = (ev: MouseEvent) => {
+      const newPct = Math.min(82, Math.max(28, startPct + ((ev.clientX - startX) / containerW) * 100));
+      setLeftPct(newPct);
+      localStorage.setItem("dash-split", String(newPct));
+    };
+    const onUp = () => {
+      document.removeEventListener("mousemove", onMove);
+      document.removeEventListener("mouseup", onUp);
+    };
+    document.addEventListener("mousemove", onMove);
+    document.addEventListener("mouseup", onUp);
+  }, [leftPct]);
 
   const loadDashboard = useCallback(async () => {
     try { const r = await fetch("/api/dashboard"); if (r.ok) setData(await r.json()); }
@@ -651,172 +716,199 @@ export default function DashboardHome({ onNavigate }: { onNavigate: (m: string) 
         </div>
       </div>
 
-      {/* ── Bento 2×2: Tasks | Finance / Notes | Projects ── */}
-      <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gridTemplateRows: "auto auto", gap: 14 }}>
+      {/* ── Bento: Resizable Split (arraste o handle para redimensionar) ── */}
+      <div ref={bentoRef} style={{ display: "flex", alignItems: "stretch", gap: 0 }}>
 
-        {/* [1,1] Tasks */}
-        <div className="card" style={{ gridColumn: 1, gridRow: 1, padding: 20 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
-            <div>
-              <h3 style={{ fontSize: 14, fontWeight: 700, color: "#111827" }}>Tarefas pendentes</h3>
-              <p style={{ fontSize: 11.5, color: "#9CA3AF", marginTop: 2 }}>✓ para concluir · clique para detalhes</p>
-            </div>
-            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-              <button onClick={() => setQuickCreate("task")} style={{ all: "unset", cursor: "pointer", display: "flex", alignItems: "center", gap: 4, fontSize: 12, fontWeight: 700, color: "#92400E", padding: "5px 10px", background: "#FEF3C7", borderRadius: 7 }}>
-                <Plus size={11} /> Tarefa
-              </button>
-              <button onClick={() => onNavigate("tasks")} style={{ all: "unset", cursor: "pointer", fontSize: 12, color: "#6B7280", fontWeight: 500 }}>Ver todas →</button>
-            </div>
-          </div>
+        {/* ── Coluna esquerda: Tarefas + Notas ── */}
+        <div style={{ width: `${leftPct}%`, display: "flex", flexDirection: "column", gap: 14, minWidth: 0 }}>
 
-          {recentTasks.length === 0 ? (
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "28px 0", gap: 10 }}>
-              <CheckCircle2 size={32} color="#D1D5DB" />
-              <p style={{ fontSize: 13.5, color: "#9CA3AF" }}>Nenhuma tarefa pendente 🎉</p>
-              <button onClick={() => setQuickCreate("task")} style={{ all: "unset", cursor: "pointer", fontSize: 12, fontWeight: 700, color: "#F59E0B", padding: "6px 14px", border: "1.5px dashed #FCD34D", borderRadius: 8 }}>+ Criar primeira tarefa</button>
+          {/* Tarefas */}
+          <div className="card" style={{ padding: 20 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+              <div>
+                <h3 style={{ fontSize: 14, fontWeight: 700, color: "#111827" }}>Tarefas pendentes</h3>
+                <p style={{ fontSize: 11.5, color: "#9CA3AF", marginTop: 2 }}>✓ para concluir · clique para detalhes</p>
+              </div>
+              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                <button onClick={() => setQuickCreate("task")} style={{ all: "unset", cursor: "pointer", display: "flex", alignItems: "center", gap: 4, fontSize: 12, fontWeight: 700, color: "#92400E", padding: "5px 10px", background: "#FEF3C7", borderRadius: 7 }}>
+                  <Plus size={11} /> Tarefa
+                </button>
+                <button onClick={() => onNavigate("tasks")} style={{ all: "unset", cursor: "pointer", fontSize: 12, color: "#6B7280", fontWeight: 500 }}>Ver todas →</button>
+              </div>
             </div>
-          ) : (
-            <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
-              {recentTasks.slice(0, 7).map((task) => (
-                <div key={task.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", borderRadius: 10, background: "#F9FAFB", border: "1px solid #F3F4F6", transition: "background 0.1s" }}
-                  onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.background = "#F0F4FF"; }}
-                  onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.background = "#F9FAFB"; }}
-                >
-                  <button onClick={(e) => { e.stopPropagation(); toggleTask(task); }} disabled={toggling === task.id}
-                    style={{ all: "unset", cursor: "pointer", flexShrink: 0, width: 20, height: 20, borderRadius: "50%", border: task.status === "COMPLETED" ? "none" : "2px solid #D1D5DB", background: task.status === "COMPLETED" ? "#10B981" : "transparent", display: "flex", alignItems: "center", justifyContent: "center", transition: "background 0.15s", opacity: toggling === task.id ? 0.4 : 1 }}>
-                    {task.status === "COMPLETED" && <Check size={11} color="#fff" />}
-                  </button>
-                  <div style={{ flex: 1, minWidth: 0, cursor: "pointer" }} onClick={() => setSelectedTaskId(task.id)}>
-                    <div style={{ fontSize: 13.5, fontWeight: 500, color: task.status === "COMPLETED" ? "#9CA3AF" : "#1F2937", textDecoration: task.status === "COMPLETED" ? "line-through" : "none", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                      {task.title}
+            {recentTasks.length === 0 ? (
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "28px 0", gap: 10 }}>
+                <CheckCircle2 size={32} color="#D1D5DB" />
+                <p style={{ fontSize: 13.5, color: "#9CA3AF" }}>Nenhuma tarefa pendente 🎉</p>
+                <button onClick={() => setQuickCreate("task")} style={{ all: "unset", cursor: "pointer", fontSize: 12, fontWeight: 700, color: "#F59E0B", padding: "6px 14px", border: "1.5px dashed #FCD34D", borderRadius: 8 }}>+ Criar primeira tarefa</button>
+              </div>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
+                {recentTasks.slice(0, 7).map((task) => (
+                  <div key={task.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", borderRadius: 10, background: "#F9FAFB", border: "1px solid #F3F4F6", transition: "background 0.1s" }}
+                    onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.background = "#F0F4FF"; }}
+                    onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.background = "#F9FAFB"; }}
+                  >
+                    <button onClick={(e) => { e.stopPropagation(); toggleTask(task); }} disabled={toggling === task.id}
+                      style={{ all: "unset", cursor: "pointer", flexShrink: 0, width: 20, height: 20, borderRadius: "50%", border: task.status === "COMPLETED" ? "none" : "2px solid #D1D5DB", background: task.status === "COMPLETED" ? "#10B981" : "transparent", display: "flex", alignItems: "center", justifyContent: "center", transition: "background 0.15s", opacity: toggling === task.id ? 0.4 : 1 }}>
+                      {task.status === "COMPLETED" && <Check size={11} color="#fff" />}
+                    </button>
+                    <div style={{ flex: 1, minWidth: 0, cursor: "pointer" }} onClick={() => setSelectedTaskId(task.id)}>
+                      <div style={{ fontSize: 13.5, fontWeight: 500, color: task.status === "COMPLETED" ? "#9CA3AF" : "#1F2937", textDecoration: task.status === "COMPLETED" ? "line-through" : "none", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                        {task.title}
+                      </div>
+                    </div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0, cursor: "pointer" }} onClick={() => setSelectedTaskId(task.id)}>
+                      <span className={`badge ${priorityBadge(task.priority)}`} style={{ fontSize: 10.5 }}>{priorityLabel(task.priority)}</span>
+                      {task.dueDate && <span style={{ fontSize: 11, color: "#9CA3AF", display: "flex", alignItems: "center", gap: 3 }}><Clock size={10} />{fmtDate(task.dueDate)}</span>}
                     </div>
                   </div>
-                  <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0, cursor: "pointer" }} onClick={() => setSelectedTaskId(task.id)}>
-                    <span className={`badge ${priorityBadge(task.priority)}`} style={{ fontSize: 10.5 }}>{priorityLabel(task.priority)}</span>
-                    {task.dueDate && <span style={{ fontSize: 11, color: "#9CA3AF", display: "flex", alignItems: "center", gap: 3 }}><Clock size={10} />{fmtDate(task.dueDate)}</span>}
-                  </div>
-                </div>
-              ))}
-              {recentTasks.length > 7 && (
-                <button onClick={() => onNavigate("tasks")} style={{ all: "unset", cursor: "pointer", textAlign: "center", fontSize: 12.5, color: "#F59E0B", fontWeight: 600, paddingTop: 10, display: "block" }}>
-                  Ver mais {recentTasks.length - 7} tarefas →
+                ))}
+                {recentTasks.length > 7 && (
+                  <button onClick={() => onNavigate("tasks")} style={{ all: "unset", cursor: "pointer", textAlign: "center", fontSize: 12.5, color: "#F59E0B", fontWeight: 600, paddingTop: 10, display: "block" }}>
+                    Ver mais {recentTasks.length - 7} tarefas →
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Notas slider */}
+          <div className="card" style={{ padding: 20 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+              <div>
+                <h3 style={{ fontSize: 14, fontWeight: 700, color: "#111827" }}>Anotações</h3>
+                <p style={{ fontSize: 11.5, color: "#9CA3AF", marginTop: 2 }}>Clique para abrir · arraste para navegar</p>
+              </div>
+              <div style={{ display: "flex", gap: 8 }}>
+                <button onClick={() => setQuickCreate("note")} style={{ all: "unset", cursor: "pointer", display: "flex", alignItems: "center", gap: 4, fontSize: 12, fontWeight: 700, color: "#6D28D9", padding: "5px 10px", background: "#EDE9FE", borderRadius: 7 }}>
+                  <Plus size={11} /> Nota
                 </button>
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* [1,2] Finance */}
-        <div className="card" style={{ gridColumn: 2, gridRow: 1, padding: 20 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
-            <h3 style={{ fontSize: 14, fontWeight: 700, color: "#111827" }}>Financeiro</h3>
-            {hasFinance && <button onClick={() => onNavigate("finance")} style={{ all: "unset", cursor: "pointer", fontSize: 12, color: "#6B7280", fontWeight: 500 }}>Ver →</button>}
-          </div>
-          {!finance?.available ? (
-            <div style={{ textAlign: "center", padding: "16px 0" }}>
-              <Lock size={28} color="#E5E7EB" style={{ marginBottom: 8 }} />
-              <p style={{ fontSize: 12.5, color: "#9CA3AF", marginBottom: 6 }}>Disponível no plano Pro</p>
-              <button onClick={() => onNavigate("settings")} style={{ all: "unset", cursor: "pointer", fontSize: 12, fontWeight: 700, color: "#F59E0B" }}>Ver planos →</button>
-            </div>
-          ) : (<>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 12 }}>
-              <div style={{ padding: "10px", background: "#F0FDF4", borderRadius: 9, textAlign: "center" }}>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 3, marginBottom: 3 }}>
-                  <ArrowUpRight size={11} color="#10B981" /><span style={{ fontSize: 10, fontWeight: 600, color: "#10B981" }}>Entradas</span>
-                </div>
-                <div style={{ fontSize: 12.5, fontWeight: 800, color: "#10B981" }}>{fmt(finance.monthlyIncome ?? 0)}</div>
-              </div>
-              <div style={{ padding: "10px", background: "#FFF5F5", borderRadius: 9, textAlign: "center" }}>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 3, marginBottom: 3 }}>
-                  <ArrowDownRight size={11} color="#EF4444" /><span style={{ fontSize: 10, fontWeight: 600, color: "#EF4444" }}>Saídas</span>
-                </div>
-                <div style={{ fontSize: 12.5, fontWeight: 800, color: "#EF4444" }}>{fmt(finance.monthlyExpense ?? 0)}</div>
+                <button onClick={() => onNavigate("notes")} style={{ all: "unset", cursor: "pointer", fontSize: 12, color: "#6B7280", fontWeight: 500 }}>Ver todas →</button>
               </div>
             </div>
-            <div style={{ padding: "8px 10px", background: (finance.monthlyBalance ?? 0) >= 0 ? "#F0FDF4" : "#FFF5F5", borderRadius: 9, display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-              <span style={{ fontSize: 12, color: "#6B7280", display: "flex", alignItems: "center", gap: 4 }}><TrendingUp size={11} /> Saldo</span>
-              <span style={{ fontSize: 14, fontWeight: 800, color: (finance.monthlyBalance ?? 0) >= 0 ? "#10B981" : "#EF4444" }}>{fmt(finance.monthlyBalance ?? 0)}</span>
-            </div>
-            {finance.months && <FinanceChart months={finance.months} />}
-          </>)}
-        </div>
-
-        {/* [2,1] Notes slider */}
-        <div className="card" style={{ gridColumn: 1, gridRow: 2, padding: 20 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
-            <div>
-              <h3 style={{ fontSize: 14, fontWeight: 700, color: "#111827" }}>Anotações</h3>
-              <p style={{ fontSize: 11.5, color: "#9CA3AF", marginTop: 2 }}>Clique para abrir · arraste para navegar</p>
-            </div>
-            <div style={{ display: "flex", gap: 8 }}>
-              <button onClick={() => setQuickCreate("note")} style={{ all: "unset", cursor: "pointer", display: "flex", alignItems: "center", gap: 4, fontSize: 12, fontWeight: 700, color: "#6D28D9", padding: "5px 10px", background: "#EDE9FE", borderRadius: 7 }}>
-                <Plus size={11} /> Nota
-              </button>
-              <button onClick={() => onNavigate("notes")} style={{ all: "unset", cursor: "pointer", fontSize: 12, color: "#6B7280", fontWeight: 500 }}>Ver todas →</button>
-            </div>
+            {recentNotes.length === 0 ? (
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "28px 0", gap: 10 }}>
+                <StickyNote size={32} color="#D1D5DB" />
+                <p style={{ fontSize: 13.5, color: "#9CA3AF" }}>Nenhuma anotação ainda.</p>
+                <button onClick={() => setQuickCreate("note")} style={{ all: "unset", cursor: "pointer", fontSize: 12, fontWeight: 700, color: "#8B5CF6", padding: "6px 14px", border: "1.5px dashed #C4B5FD", borderRadius: 8 }}>+ Criar primeira nota</button>
+              </div>
+            ) : (
+              <div style={{ display: "flex", gap: 14, overflowX: "auto", scrollSnapType: "x mandatory", scrollBehavior: "smooth", paddingBottom: 6 }}>
+                {recentNotes.map((note) => (
+                  <div key={note.id} onClick={() => setSelectedNoteId(note.id)}
+                    style={{ flexShrink: 0, width: 220, minHeight: 148, scrollSnapAlign: "start", borderRadius: 14, background: note.color ?? "#F8FAFC", border: "1px solid rgba(0,0,0,0.06)", padding: "16px 16px 12px", cursor: "pointer", position: "relative", transition: "transform 0.15s, box-shadow 0.15s" }}
+                    onMouseEnter={(e) => { const d = e.currentTarget as HTMLDivElement; d.style.transform = "translateY(-3px)"; d.style.boxShadow = "0 8px 24px rgba(0,0,0,0.1)"; }}
+                    onMouseLeave={(e) => { const d = e.currentTarget as HTMLDivElement; d.style.transform = ""; d.style.boxShadow = ""; }}
+                  >
+                    <div style={{ fontSize: 13, fontWeight: 700, color: "#1F2937", marginBottom: 7, lineHeight: 1.3, paddingRight: 18 }}>{note.title}</div>
+                    <div style={{ fontSize: 12, color: "#4B5563", lineHeight: 1.6, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 4, WebkitBoxOrient: "vertical" } as React.CSSProperties}>{note.content}</div>
+                    <div style={{ position: "absolute", bottom: 10, right: 12 }}>
+                      <Pencil size={10} color="rgba(0,0,0,0.18)" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
-          {recentNotes.length === 0 ? (
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "28px 0", gap: 10 }}>
-              <StickyNote size={32} color="#D1D5DB" />
-              <p style={{ fontSize: 13.5, color: "#9CA3AF" }}>Nenhuma anotação ainda.</p>
-              <button onClick={() => setQuickCreate("note")} style={{ all: "unset", cursor: "pointer", fontSize: 12, fontWeight: 700, color: "#8B5CF6", padding: "6px 14px", border: "1.5px dashed #C4B5FD", borderRadius: 8 }}>+ Criar primeira nota</button>
-            </div>
-          ) : (
-            <div style={{ display: "flex", gap: 14, overflowX: "auto", scrollSnapType: "x mandatory", scrollBehavior: "smooth", paddingBottom: 6 }}>
-              {recentNotes.map((note) => (
-                <div key={note.id} onClick={() => setSelectedNoteId(note.id)}
-                  style={{ flexShrink: 0, width: 220, minHeight: 148, scrollSnapAlign: "start", borderRadius: 14, background: note.color ?? "#F8FAFC", border: "1px solid rgba(0,0,0,0.06)", padding: "16px 16px 12px", cursor: "pointer", position: "relative", transition: "transform 0.15s, box-shadow 0.15s" }}
-                  onMouseEnter={(e) => { const d = e.currentTarget as HTMLDivElement; d.style.transform = "translateY(-3px)"; d.style.boxShadow = "0 8px 24px rgba(0,0,0,0.1)"; }}
-                  onMouseLeave={(e) => { const d = e.currentTarget as HTMLDivElement; d.style.transform = ""; d.style.boxShadow = ""; }}
-                >
-                  <div style={{ fontSize: 13, fontWeight: 700, color: "#1F2937", marginBottom: 7, lineHeight: 1.3, paddingRight: 18 }}>{note.title}</div>
-                  <div style={{ fontSize: 12, color: "#4B5563", lineHeight: 1.6, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 4, WebkitBoxOrient: "vertical" } as React.CSSProperties}>{note.content}</div>
-                  <div style={{ position: "absolute", bottom: 10, right: 12 }}>
-                    <Pencil size={10} color="rgba(0,0,0,0.18)" />
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
 
-        {/* [2,2] Projects */}
-        <div className="card" style={{ gridColumn: 2, gridRow: 2, padding: 20 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
-            <h3 style={{ fontSize: 14, fontWeight: 700, color: "#111827" }}>Projetos</h3>
-            <div style={{ display: "flex", gap: 8 }}>
-              <button onClick={() => setQuickCreate("project")} style={{ all: "unset", cursor: "pointer", fontSize: 12, fontWeight: 700, color: "#1E40AF", padding: "4px 8px", background: "#DBEAFE", borderRadius: 6 }}><Plus size={10} style={{ display: "inline", marginRight: 2 }} />Novo</button>
-              <button onClick={() => onNavigate("projects")} style={{ all: "unset", cursor: "pointer", fontSize: 12, color: "#6B7280", fontWeight: 500 }}>Ver →</button>
-            </div>
+        </div>{/* end coluna esquerda */}
+
+        {/* ── Drag Handle ── */}
+        <div
+          onMouseDown={startDrag}
+          title="Arrastar para redimensionar"
+          style={{ width: 16, flexShrink: 0, cursor: "col-resize", display: "flex", alignItems: "center", justifyContent: "center", position: "relative", userSelect: "none" }}
+        >
+          <div style={{ width: 2, height: "100%", background: "#F0F0F0", position: "absolute", borderRadius: 99 }} />
+          <div
+            style={{ position: "relative", zIndex: 1, width: 12, height: 40, background: "#E5E7EB", borderRadius: 6, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 3, transition: "background 0.15s" }}
+            onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.background = "#D1D5DB"; }}
+            onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.background = "#E5E7EB"; }}
+          >
+            {[0, 1, 2].map((i) => (
+              <div key={i} style={{ width: 2, height: 2, borderRadius: "50%", background: "#9CA3AF" }} />
+            ))}
           </div>
-          {activeProjects.length === 0 ? (
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "20px 0", gap: 10 }}>
-              <FolderKanban size={32} color="#D1D5DB" />
-              <p style={{ fontSize: 13, color: "#9CA3AF" }}>Nenhum projeto ativo</p>
-              <button onClick={() => setQuickCreate("project")} style={{ all: "unset", cursor: "pointer", fontSize: 12, fontWeight: 700, color: "#3B82F6", padding: "6px 14px", border: "1.5px dashed #BFDBFE", borderRadius: 8 }}>+ Criar projeto</button>
-            </div>
-          ) : (
-            <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
-              {activeProjects.slice(0, 5).map((p) => (
-                <div key={p.id} onClick={() => setSelectedProjectId(p.id)}
-                  style={{ padding: "10px 12px", background: "#F9FAFB", borderRadius: 9, border: "1px solid #F3F4F6", cursor: "pointer", transition: "background 0.1s" }}
-                  onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.background = "#F0F4FF"; }}
-                  onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.background = "#F9FAFB"; }}
-                >
-                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 5 }}>
-                    <span style={{ fontSize: 12.5, fontWeight: 600, color: "#374151", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.name}</span>
-                    <span style={{ fontSize: 11, fontWeight: 700, color: "#6B7280", flexShrink: 0, marginLeft: 8 }}>{p.progress}%</span>
-                  </div>
-                  <div style={{ height: 4, background: "#E5E7EB", borderRadius: 99 }}>
-                    <div style={{ height: "100%", background: "linear-gradient(90deg,#FBBF24,#F59E0B)", width: `${p.progress}%`, borderRadius: 99, transition: "width 0.5s" }} />
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
         </div>
 
-      </div>
+        {/* ── Coluna direita: Financeiro + Projetos ── */}
+        <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 14, minWidth: 0 }}>
+
+          {/* Financeiro */}
+          <div className="card" style={{ padding: 20 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+              <h3 style={{ fontSize: 14, fontWeight: 700, color: "#111827" }}>Financeiro</h3>
+              {hasFinance && <button onClick={() => onNavigate("finance")} style={{ all: "unset", cursor: "pointer", fontSize: 12, color: "#6B7280", fontWeight: 500 }}>Ver →</button>}
+            </div>
+            {!finance?.available ? (
+              <div style={{ textAlign: "center", padding: "16px 0" }}>
+                <Lock size={28} color="#E5E7EB" style={{ marginBottom: 8 }} />
+                <p style={{ fontSize: 12.5, color: "#9CA3AF", marginBottom: 6 }}>Disponível no plano Pro</p>
+                <button onClick={() => onNavigate("settings")} style={{ all: "unset", cursor: "pointer", fontSize: 12, fontWeight: 700, color: "#F59E0B" }}>Ver planos →</button>
+              </div>
+            ) : (<>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 12 }}>
+                <div style={{ padding: "10px", background: "#F0FDF4", borderRadius: 9, textAlign: "center" }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 3, marginBottom: 3 }}>
+                    <ArrowUpRight size={11} color="#10B981" /><span style={{ fontSize: 10, fontWeight: 600, color: "#10B981" }}>Entradas</span>
+                  </div>
+                  <div style={{ fontSize: 12.5, fontWeight: 800, color: "#10B981" }}>{fmt(finance.monthlyIncome ?? 0)}</div>
+                </div>
+                <div style={{ padding: "10px", background: "#FFF5F5", borderRadius: 9, textAlign: "center" }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 3, marginBottom: 3 }}>
+                    <ArrowDownRight size={11} color="#EF4444" /><span style={{ fontSize: 10, fontWeight: 600, color: "#EF4444" }}>Saídas</span>
+                  </div>
+                  <div style={{ fontSize: 12.5, fontWeight: 800, color: "#EF4444" }}>{fmt(finance.monthlyExpense ?? 0)}</div>
+                </div>
+              </div>
+              <div style={{ padding: "8px 10px", background: (finance.monthlyBalance ?? 0) >= 0 ? "#F0FDF4" : "#FFF5F5", borderRadius: 9, display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+                <span style={{ fontSize: 12, color: "#6B7280", display: "flex", alignItems: "center", gap: 4 }}><TrendingUp size={11} /> Saldo</span>
+                <span style={{ fontSize: 14, fontWeight: 800, color: (finance.monthlyBalance ?? 0) >= 0 ? "#10B981" : "#EF4444" }}>{fmt(finance.monthlyBalance ?? 0)}</span>
+              </div>
+              {finance.months && <FinanceChart months={finance.months} />}
+            </>)}
+          </div>
+
+          {/* Projetos */}
+          <div className="card" style={{ padding: 20 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+              <h3 style={{ fontSize: 14, fontWeight: 700, color: "#111827" }}>Projetos</h3>
+              <div style={{ display: "flex", gap: 8 }}>
+                <button onClick={() => setQuickCreate("project")} style={{ all: "unset", cursor: "pointer", fontSize: 12, fontWeight: 700, color: "#1E40AF", padding: "4px 8px", background: "#DBEAFE", borderRadius: 6 }}><Plus size={10} style={{ display: "inline", marginRight: 2 }} />Novo</button>
+                <button onClick={() => onNavigate("projects")} style={{ all: "unset", cursor: "pointer", fontSize: 12, color: "#6B7280", fontWeight: 500 }}>Ver →</button>
+              </div>
+            </div>
+            {activeProjects.length === 0 ? (
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "20px 0", gap: 10 }}>
+                <FolderKanban size={32} color="#D1D5DB" />
+                <p style={{ fontSize: 13, color: "#9CA3AF" }}>Nenhum projeto ativo</p>
+                <button onClick={() => setQuickCreate("project")} style={{ all: "unset", cursor: "pointer", fontSize: 12, fontWeight: 700, color: "#3B82F6", padding: "6px 14px", border: "1.5px dashed #BFDBFE", borderRadius: 8 }}>+ Criar projeto</button>
+              </div>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
+                {activeProjects.slice(0, 5).map((p) => (
+                  <div key={p.id} onClick={() => setSelectedProjectId(p.id)}
+                    style={{ padding: "10px 12px", background: "#F9FAFB", borderRadius: 9, border: "1px solid #F3F4F6", cursor: "pointer", transition: "background 0.1s" }}
+                    onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.background = "#F0F4FF"; }}
+                    onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.background = "#F9FAFB"; }}
+                  >
+                    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 5 }}>
+                      <span style={{ fontSize: 12.5, fontWeight: 600, color: "#374151", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.name}</span>
+                      <span style={{ fontSize: 11, fontWeight: 700, color: "#6B7280", flexShrink: 0, marginLeft: 8 }}>{p.progress}%</span>
+                    </div>
+                    <div style={{ height: 4, background: "#E5E7EB", borderRadius: 99 }}>
+                      <div style={{ height: "100%", background: "linear-gradient(90deg,#FBBF24,#F59E0B)", width: `${p.progress}%`, borderRadius: 99, transition: "width 0.5s" }} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+        </div>{/* end coluna direita */}
+
+      </div>{/* end bento */}
 
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>

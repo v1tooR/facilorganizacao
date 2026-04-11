@@ -1,6 +1,10 @@
 /**
- * GET  /api/notes  — lista notas do usuário
- * POST /api/notes  — cria nova nota (verifica limite do plano)
+ * GET  /api/notes          — lista notas ativas (isArchived=false) do usuário
+ * GET  /api/notes?archived=1 — lista notas arquivadas
+ * POST /api/notes          — cria nova nota (verifica limite do plano)
+ *
+ * Tags são armazenadas como JSON string no campo `tags` (Text).
+ * Pinned notes aparecem primeiro na ordenação padrão.
  */
 
 import { NextRequest, NextResponse } from "next/server";
@@ -9,16 +13,34 @@ import { db } from "@/lib/db";
 import { canCreate, limitReachedMessage } from "@/lib/plans";
 import { CreateNoteSchema } from "@/lib/validations";
 
-export async function GET() {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const noteDb = db.note as any;
+
+function parseNote(n: Record<string, unknown>) {
+  return {
+    ...n,
+    tags: n.tags ? JSON.parse(n.tags as string) : [],
+  };
+}
+
+export async function GET(request: NextRequest) {
   const { user, error } = await requireAuth();
   if (error) return error;
 
-  const notes = await db.note.findMany({
-    where: { userId: user.id },
-    orderBy: { updatedAt: "desc" },
+  const { searchParams } = new URL(request.url);
+  const archived = searchParams.get("archived") === "1";
+
+  const notes = await noteDb.findMany({
+    where: { userId: user.id, isArchived: archived },
+    orderBy: archived
+      ? [{ updatedAt: "desc" }]
+      : [{ isPinned: "desc" }, { pinnedAt: "desc" }, { updatedAt: "desc" }],
+    include: {
+      project: { select: { id: true, name: true } },
+    },
   });
 
-  return NextResponse.json({ notes });
+  return NextResponse.json({ notes: notes.map(parseNote) });
 }
 
 export async function POST(request: NextRequest) {
@@ -48,12 +70,18 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const note = await db.note.create({
+  const { tags, ...rest } = parsed.data;
+
+  const note = await noteDb.create({
     data: {
-      ...parsed.data,
+      ...rest,
+      tags: tags && tags.length > 0 ? JSON.stringify(tags) : null,
       userId: user.id,
+    },
+    include: {
+      project: { select: { id: true, name: true } },
     },
   });
 
-  return NextResponse.json({ note }, { status: 201 });
+  return NextResponse.json({ note: parseNote(note) }, { status: 201 });
 }

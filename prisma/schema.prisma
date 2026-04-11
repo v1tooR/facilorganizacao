@@ -119,13 +119,16 @@ model Project {
   name        String        @db.VarChar(255)
   description String?       @db.Text
   status      ProjectStatus @default(PLANNING)
-  // progress: 0–100, representa percentual de conclusão
+  // progress: 0–100, usado como fallback quando não há tarefas
   progress    Int           @default(0)
+  startDate   DateTime?
+  dueDate     DateTime?
 
   userId String
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   tasks Task[]
+  notes Note[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -142,6 +145,18 @@ model Note {
   // color: código hex ou nome CSS, ex: "#FEF3C7"
   color   String? @db.VarChar(30)
 
+  // V2: organização e estados
+  // tags: JSON array serializado, ex: ["ideia","urgente"]
+  tags       String?  @db.Text
+  isPinned   Boolean  @default(false)
+  isArchived Boolean  @default(false)
+  pinnedAt   DateTime?
+  archivedAt DateTime?
+
+  // V2: vínculo opcional com projeto
+  projectId String?
+  project   Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
+
   userId String
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -149,6 +164,9 @@ model Note {
   updatedAt DateTime @updatedAt
 
   @@index([userId])
+  @@index([userId, isPinned])
+  @@index([userId, isArchived])
+  @@index([projectId])
   @@map("notes")
 }
 
