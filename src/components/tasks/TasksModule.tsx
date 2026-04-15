@@ -127,7 +127,7 @@ function TaskFormModal({
         description: form.description || undefined,
         priority: form.priority,
         dueDate: form.dueDate ? new Date(form.dueDate + "T12:00:00").toISOString() : undefined,
-        projectId: form.projectId || null,
+        projectId: form.projectId || undefined,
       };
       if (editing) body.status = form.status;
 
@@ -409,17 +409,38 @@ export default function TasksModule({ user }: { user: AppUser | null }) {
             </button>
           )}
         </div>
-      ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          {tasks.map((task) => (
-            <TaskRow key={task.id} task={task}
-              onToggle={toggleComplete}
-              onEdit={(t) => setModal({ open: true, editing: t })}
-              onDelete={remove}
-            />
-          ))}
-        </div>
-      )}
+      ) : (() => {
+        const active = tasks.filter((t) => t.status !== "COMPLETED" && t.status !== "CANCELLED");
+        const done   = tasks.filter((t) => t.status === "COMPLETED" || t.status === "CANCELLED");
+        const showSeparator = active.length > 0 && done.length > 0 && !filterStatus;
+        return (
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {active.map((task) => (
+              <TaskRow key={task.id} task={task}
+                onToggle={toggleComplete}
+                onEdit={(t) => setModal({ open: true, editing: t })}
+                onDelete={remove}
+              />
+            ))}
+            {showSeparator && (
+              <div style={{ display: "flex", alignItems: "center", gap: 10, margin: "6px 0 2px" }}>
+                <div style={{ flex: 1, height: 1, background: "#E5E7EB" }} />
+                <span style={{ fontSize: 11.5, fontWeight: 600, color: "#9CA3AF", textTransform: "uppercase", letterSpacing: "0.06em", whiteSpace: "nowrap" }}>
+                  Concluídas · {done.length}
+                </span>
+                <div style={{ flex: 1, height: 1, background: "#E5E7EB" }} />
+              </div>
+            )}
+            {done.map((task) => (
+              <TaskRow key={task.id} task={task}
+                onToggle={toggleComplete}
+                onEdit={(t) => setModal({ open: true, editing: t })}
+                onDelete={remove}
+              />
+            ))}
+          </div>
+        );
+      })()}
 
       {/* Form Modal */}
       {modal.open && (

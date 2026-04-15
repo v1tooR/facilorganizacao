@@ -141,7 +141,8 @@ interface FullTask {
 function TaskDetailModal({ taskId, onClose, onRefresh }: { taskId: string; onClose: () => void; onRefresh: () => void }) {
   const [task, setTask] = useState<FullTask | null>(null);
   const [editing, setEditing] = useState(false);
-  const [form, setForm] = useState({ title: "", description: "", priority: "MEDIUM", status: "PENDING", dueDate: "" });
+  const [form, setForm] = useState({ title: "", description: "", priority: "MEDIUM", status: "PENDING", dueDate: "", projectId: "" });
+  const [projects, setProjects] = useState<{ id: string; name: string }[]>([]);
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState("");
 
@@ -149,7 +150,10 @@ function TaskDetailModal({ taskId, onClose, onRefresh }: { taskId: string; onClo
     fetch(`/api/tasks/${taskId}`).then((r) => r.json()).then((d) => {
       if (!d.task) return;
       setTask(d.task);
-      setForm({ title: d.task.title, description: d.task.description ?? "", priority: d.task.priority, status: d.task.status, dueDate: d.task.dueDate ? d.task.dueDate.substring(0, 10) : "" });
+      setForm({ title: d.task.title, description: d.task.description ?? "", priority: d.task.priority, status: d.task.status, dueDate: d.task.dueDate ? d.task.dueDate.substring(0, 10) : "", projectId: d.task.project?.id ?? "" });
+    });
+    fetch("/api/projects").then((r) => r.json()).then((d) => {
+      if (d.projects) setProjects(d.projects.map((p: { id: string; name: string }) => ({ id: p.id, name: p.name })));
     });
   }, [taskId]);
 
@@ -157,7 +161,7 @@ function TaskDetailModal({ taskId, onClose, onRefresh }: { taskId: string; onClo
     setSaving(true); setErr("");
     const r = await fetch(`/api/tasks/${taskId}`, {
       method: "PUT", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ title: form.title, description: form.description || undefined, priority: form.priority, status: form.status, dueDate: form.dueDate ? new Date(form.dueDate).toISOString() : undefined }),
+      body: JSON.stringify({ title: form.title, description: form.description || undefined, priority: form.priority, status: form.status, dueDate: form.dueDate ? new Date(form.dueDate + "T12:00:00").toISOString() : undefined, projectId: form.projectId || null }),
     });
     setSaving(false);
     if (r.ok) {
@@ -193,6 +197,12 @@ function TaskDetailModal({ taskId, onClose, onRefresh }: { taskId: string; onClo
             </Field>
           </div>
           <Field label="Prazo"><input type="date" className="input-base" value={form.dueDate} onChange={(e) => setForm({ ...form, dueDate: e.target.value })} style={{ fontSize: 13.5 }} /></Field>
+          <Field label="Projeto">
+            <select className="input-base" value={form.projectId} onChange={(e) => setForm({ ...form, projectId: e.target.value })} style={{ fontSize: 13.5 }}>
+              <option value="">Nenhum projeto</option>
+              {projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+            </select>
+          </Field>
           {err && <p style={{ fontSize: 13, color: "#EF4444" }}>{err}</p>}
           <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
             <button onClick={() => setEditing(false)} className="btn-secondary" style={{ fontSize: 13, padding: "9px 18px" }}>Cancelar</button>
