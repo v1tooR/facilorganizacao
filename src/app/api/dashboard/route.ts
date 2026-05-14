@@ -65,7 +65,10 @@ export async function GET() {
       },
       orderBy: { updatedAt: "desc" },
       take: 4,
-      include: { _count: { select: { tasks: true } } },
+      include: {
+        _count: { select: { tasks: true } },
+        tasks: { where: { status: "COMPLETED" }, select: { id: true } },
+      },
     }),
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -184,9 +187,12 @@ export async function GET() {
     activeProjects: activeProjects.map((p) => ({
       id: p.id,
       name: p.name,
+      description: p.description ?? null,
       status: p.status,
       progress: p.progress,
       taskCount: p._count.tasks,
+      completedTaskCount: p.tasks?.length ?? 0,
+      dueDate: p.dueDate ?? null,
     })),
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     recentNotes: (recentNotes as any[]).map((n) => ({

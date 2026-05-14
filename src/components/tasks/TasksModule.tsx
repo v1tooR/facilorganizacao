@@ -6,6 +6,7 @@ import {
   AlertCircle, FolderKanban,
 } from "lucide-react";
 import { PLANS } from "@/lib/plans";
+import { useDark } from "@/contexts/ThemeContext";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -38,11 +39,11 @@ function fmtDate(d: string | Date | null | undefined) {
   return new Date(d).toLocaleDateString("pt-BR", { day: "2-digit", month: "short" });
 }
 
-const PRIORITY_CFG: Record<TaskPriority, { label: string; badgeBg: string; badgeColor: string }> = {
-  LOW:    { label: "Baixa",   badgeBg: "#F3F4F6", badgeColor: "#6B7280" },
-  MEDIUM: { label: "Média",   badgeBg: "#FEF3C7", badgeColor: "#92400E" },
-  HIGH:   { label: "Alta",    badgeBg: "#FEE2E2", badgeColor: "#991B1B" },
-  URGENT: { label: "Urgente", badgeBg: "#FEE2E2", badgeColor: "#7F1D1D" },
+const PRIORITY_CFG: Record<TaskPriority, { label: string; badgeBg: string; badgeColor: string; darkBg: string; darkColor: string }> = {
+  LOW:    { label: "Baixa",   badgeBg: "#F3F4F6", badgeColor: "#6B7280", darkBg: "#21262D", darkColor: "#8D96A0" },
+  MEDIUM: { label: "Média",   badgeBg: "#FEF3C7", badgeColor: "#92400E", darkBg: "#2D2008", darkColor: "#F59E0B" },
+  HIGH:   { label: "Alta",    badgeBg: "#FEE2E2", badgeColor: "#991B1B", darkBg: "#2D1010", darkColor: "#F87171" },
+  URGENT: { label: "Urgente", badgeBg: "#FEE2E2", badgeColor: "#7F1D1D", darkBg: "#3D0808", darkColor: "#EF4444" },
 };
 
 const STATUS_LABEL: Record<string, string> = {
@@ -57,6 +58,12 @@ function isOverdue(dueDate: string | null, status: string) {
 // ── Modal & Field ─────────────────────────────────────────────────────────────
 
 function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
+  const { dark } = useDark();
+  const surface  = dark ? "#1C2128" : "#fff";
+  const txt      = dark ? "#E6EDF3" : "#111827";
+  const txtMuted = dark ? "#8D96A0" : "#6B7280";
+  const bord     = dark ? "#30363D" : "#E5E7EB";
+
   useEffect(() => {
     const handler = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
     window.addEventListener("keydown", handler);
@@ -65,16 +72,17 @@ function Modal({ title, onClose, children }: { title: string; onClose: () => voi
 
   return (
     <div style={{
-      position: "fixed", inset: 0, zIndex: 200, background: "rgba(0,0,0,0.35)",
+      position: "fixed", inset: 0, zIndex: 200, background: "rgba(0,0,0,0.45)",
       display: "flex", alignItems: "center", justifyContent: "center", padding: 16,
     }} onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <div style={{
-        background: "#fff", borderRadius: 14, padding: 24, width: "100%", maxWidth: 480,
-        boxShadow: "0 20px 60px rgba(0,0,0,0.15)", maxHeight: "90vh", overflowY: "auto",
+        background: surface, borderRadius: 14, padding: 24, width: "100%", maxWidth: 480,
+        boxShadow: "0 20px 60px rgba(0,0,0,0.3)", maxHeight: "90vh", overflowY: "auto",
+        border: dark ? `1px solid ${bord}` : "none",
       }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
-          <h3 style={{ fontSize: 16, fontWeight: 700, color: "#111827" }}>{title}</h3>
-          <button onClick={onClose} style={{ all: "unset", cursor: "pointer", color: "#6B7280" }}><X size={18} /></button>
+          <h3 style={{ fontSize: 16, fontWeight: 700, color: txt }}>{title}</h3>
+          <button onClick={onClose} style={{ all: "unset", cursor: "pointer", color: txtMuted }}><X size={18} /></button>
         </div>
         {children}
       </div>
@@ -83,9 +91,11 @@ function Modal({ title, onClose, children }: { title: string; onClose: () => voi
 }
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  const { dark } = useDark();
+  const txt2 = dark ? "#CDD5E0" : "#374151";
   return (
     <div>
-      <label style={{ display: "block", fontSize: 12.5, fontWeight: 600, color: "#374151", marginBottom: 5 }}>
+      <label style={{ display: "block", fontSize: 12.5, fontWeight: 600, color: txt2, marginBottom: 5 }}>
         {label}
       </label>
       {children}
@@ -214,9 +224,16 @@ function TaskRow({ task, onToggle, onEdit, onDelete }: {
   onEdit: (t: Task) => void;
   onDelete: (id: string) => void;
 }) {
+  const { dark } = useDark();
+  const txt      = dark ? "#E6EDF3" : "#111827";
+  const txtFaint = dark ? "#8B949E" : "#9CA3AF";
+  const bgSec    = dark ? "#21262D" : "#F3F4F6";
+
   const done = task.status === "COMPLETED";
   const overdue = isOverdue(task.dueDate, task.status);
-  const pCfg = PRIORITY_CFG[task.priority];
+  const pCfg   = PRIORITY_CFG[task.priority];
+  const pBg    = dark ? pCfg.darkBg    : pCfg.badgeBg;
+  const pColor = dark ? pCfg.darkColor : pCfg.badgeColor;
 
   return (
     <div className="card" style={{
@@ -226,7 +243,7 @@ function TaskRow({ task, onToggle, onEdit, onDelete }: {
       {/* Checkbox */}
       <button onClick={() => onToggle(task)} style={{
         all: "unset", width: 20, height: 20, borderRadius: "50%", flexShrink: 0, cursor: "pointer",
-        border: done ? "none" : "2px solid #D1D5DB",
+        border: done ? "none" : `2px solid ${dark ? "#6E7681" : "#D1D5DB"}`,
         background: done ? "#10B981" : "transparent",
         display: "flex", alignItems: "center", justifyContent: "center",
       }}>
@@ -237,7 +254,7 @@ function TaskRow({ task, onToggle, onEdit, onDelete }: {
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{
           fontSize: 14, fontWeight: 600,
-          color: done ? "#9CA3AF" : "#111827",
+          color: done ? txtFaint : txt,
           textDecoration: done ? "line-through" : "none",
           whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
         }}>
@@ -250,7 +267,7 @@ function TaskRow({ task, onToggle, onEdit, onDelete }: {
             </span>
           )}
           {task.description && (
-            <span style={{ fontSize: 11.5, color: "#9CA3AF", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: 180 }}>
+            <span style={{ fontSize: 11.5, color: txtFaint, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: 180 }}>
               {task.description}
             </span>
           )}
@@ -259,18 +276,18 @@ function TaskRow({ task, onToggle, onEdit, onDelete }: {
 
       {/* Meta */}
       <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
-        <span style={{ fontSize: 11.5, fontWeight: 600, padding: "2px 8px", borderRadius: 999, background: pCfg.badgeBg, color: pCfg.badgeColor }}>
+        <span style={{ fontSize: 11.5, fontWeight: 600, padding: "2px 8px", borderRadius: 999, background: pBg, color: pColor }}>
           {pCfg.label}
         </span>
-        <span style={{ fontSize: 11, fontWeight: 500, padding: "2px 8px", borderRadius: 999, background: "#F3F4F6", color: "#6B7280" }}>
+        <span style={{ fontSize: 11, fontWeight: 500, padding: "2px 8px", borderRadius: 999, background: bgSec, color: dark ? "#8D96A0" : "#6B7280" }}>
           {STATUS_LABEL[task.status] ?? task.status}
         </span>
         {task.dueDate && (
-          <span style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11, color: overdue ? "#EF4444" : "#9CA3AF", fontWeight: overdue ? 600 : 400 }}>
+          <span style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11, color: overdue ? "#EF4444" : txtFaint, fontWeight: overdue ? 600 : 400 }}>
             <Clock size={11} />{fmtDate(task.dueDate)}
           </span>
         )}
-        <button onClick={() => onEdit(task)} style={{ all: "unset", cursor: "pointer", color: "#9CA3AF", display: "flex" }}><Pencil size={14} /></button>
+        <button onClick={() => onEdit(task)} style={{ all: "unset", cursor: "pointer", color: txtFaint, display: "flex" }}><Pencil size={14} /></button>
         <button onClick={() => onDelete(task.id)} style={{ all: "unset", cursor: "pointer", color: "#EF4444", display: "flex" }}><Trash2 size={14} /></button>
       </div>
     </div>
@@ -280,6 +297,15 @@ function TaskRow({ task, onToggle, onEdit, onDelete }: {
 // ── Main Module ───────────────────────────────────────────────────────────────
 
 export default function TasksModule({ user }: { user: AppUser | null }) {
+  const { dark } = useDark();
+  const txt      = dark ? "#E6EDF3" : "#111827";
+  const txt2     = dark ? "#CDD5E0" : "#374151";
+  const txtMuted = dark ? "#8D96A0" : "#6B7280";
+  const txtFaint = dark ? "#8B949E" : "#9CA3AF";
+  const surface  = dark ? "#1C2128" : "#FFFFFF";
+  const bgSec    = dark ? "#21262D" : "#F3F4F6";
+  const bord     = dark ? "#30363D" : "#E5E7EB";
+
   const [tasks, setTasks] = useState<Task[]>([]);
   const [projects, setProjects] = useState<ProjectOption[]>([]);
   const [loading, setLoading] = useState(true);
@@ -292,9 +318,9 @@ export default function TasksModule({ user }: { user: AppUser | null }) {
     setLoading(true);
     try {
       const params = new URLSearchParams();
-      if (filterStatus)  params.set("status",    filterStatus);
-      if (filterPriority) params.set("priority", filterPriority);
-      if (filterProject) params.set("projectId", filterProject);
+      if (filterStatus)   params.set("status",    filterStatus);
+      if (filterPriority) params.set("priority",  filterPriority);
+      if (filterProject)  params.set("projectId", filterProject);
       const [tasksRes, projectsRes] = await Promise.all([
         fetch(`/api/tasks?${params}`),
         fetch("/api/projects"),
@@ -324,14 +350,20 @@ export default function TasksModule({ user }: { user: AppUser | null }) {
   const planLimit = user ? PLANS[user.plan as keyof typeof PLANS].limits.tasks : 0;
   const atLimit = user && tasks.length >= planLimit && !filterStatus && !filterPriority && !filterProject;
 
+  const selectStyle: React.CSSProperties = {
+    padding: "7px 12px", borderRadius: 9, border: `1.5px solid ${bord}`,
+    fontSize: 13, background: surface, color: txt2,
+    fontFamily: "DM Sans, sans-serif", cursor: "pointer",
+  };
+
   return (
     <div style={{ padding: 24 }}>
 
       {/* Header */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
         <div>
-          <h2 style={{ fontSize: 18, fontWeight: 800, color: "#111827" }}>Tarefas</h2>
-          <p style={{ fontSize: 13, color: "#6B7280", marginTop: 2 }}>
+          <h2 style={{ fontSize: 18, fontWeight: 800, color: txt }}>Tarefas</h2>
+          <p style={{ fontSize: 13, color: txtMuted, marginTop: 2 }}>
             {tasks.length} tarefa{tasks.length !== 1 ? "s" : ""}
             {planLimit > 0 && ` · limite: ${planLimit}`}
           </p>
@@ -344,23 +376,21 @@ export default function TasksModule({ user }: { user: AppUser | null }) {
       </div>
 
       {atLimit && (
-        <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 14px", background: "#FEF3C7", borderRadius: 9, marginBottom: 14, fontSize: 13, color: "#92400E" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 14px", background: dark ? "#2D2008" : "#FEF3C7", borderRadius: 9, marginBottom: 14, fontSize: 13, color: dark ? "#F59E0B" : "#92400E" }}>
           <AlertCircle size={14} /> Limite do plano atingido. Faça upgrade para criar mais tarefas.
         </div>
       )}
 
       {/* Filters */}
       <div style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap" }}>
-        <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}
-          style={{ padding: "7px 12px", borderRadius: 9, border: "1.5px solid #E5E7EB", fontSize: 13, background: "#fff", color: "#374151", fontFamily: "DM Sans, sans-serif", cursor: "pointer" }}>
+        <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} style={selectStyle}>
           <option value="">Todos os status</option>
           <option value="PENDING">Pendente</option>
           <option value="IN_PROGRESS">Em andamento</option>
           <option value="COMPLETED">Concluída</option>
           <option value="CANCELLED">Cancelada</option>
         </select>
-        <select value={filterPriority} onChange={(e) => setFilterPriority(e.target.value)}
-          style={{ padding: "7px 12px", borderRadius: 9, border: "1.5px solid #E5E7EB", fontSize: 13, background: "#fff", color: "#374151", fontFamily: "DM Sans, sans-serif", cursor: "pointer" }}>
+        <select value={filterPriority} onChange={(e) => setFilterPriority(e.target.value)} style={selectStyle}>
           <option value="">Todas as prioridades</option>
           <option value="LOW">Baixa</option>
           <option value="MEDIUM">Média</option>
@@ -368,8 +398,7 @@ export default function TasksModule({ user }: { user: AppUser | null }) {
           <option value="URGENT">Urgente</option>
         </select>
         {projects.length > 0 && (
-          <select value={filterProject} onChange={(e) => setFilterProject(e.target.value)}
-            style={{ padding: "7px 12px", borderRadius: 9, border: "1.5px solid #E5E7EB", fontSize: 13, background: "#fff", color: "#374151", fontFamily: "DM Sans, sans-serif", cursor: "pointer" }}>
+          <select value={filterProject} onChange={(e) => setFilterProject(e.target.value)} style={selectStyle}>
             <option value="">Todos os projetos</option>
             {projects.map((p) => (
               <option key={p.id} value={p.id}>{p.name}</option>
@@ -378,7 +407,7 @@ export default function TasksModule({ user }: { user: AppUser | null }) {
         )}
         {(filterStatus || filterPriority || filterProject) && (
           <button onClick={() => { setFilterStatus(""); setFilterPriority(""); setFilterProject(""); }}
-            style={{ all: "unset", cursor: "pointer", display: "flex", alignItems: "center", gap: 5, fontSize: 12.5, color: "#6B7280", padding: "7px 10px", borderRadius: 9, border: "1.5px solid #E5E7EB", background: "#fff" }}>
+            style={{ all: "unset", cursor: "pointer", display: "flex", alignItems: "center", gap: 5, fontSize: 12.5, color: txtMuted, padding: "7px 10px", borderRadius: 9, border: `1.5px solid ${bord}`, background: surface }}>
             <X size={13} /> Limpar
           </button>
         )}
@@ -388,17 +417,17 @@ export default function TasksModule({ user }: { user: AppUser | null }) {
       {loading ? (
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           {[1, 2, 3].map((i) => (
-            <div key={i} style={{ height: 58, borderRadius: 10, background: "#F3F4F6", animation: "pulse 1.5s ease-in-out infinite" }} />
+            <div key={i} style={{ height: 58, borderRadius: 10, background: bgSec, animation: "pulse 1.5s ease-in-out infinite" }} />
           ))}
         </div>
       ) : tasks.length === 0 ? (
         <div style={{ textAlign: "center", padding: "48px 0" }}>
-          <CheckCircle2 size={40} color="#E5E7EB" style={{ marginBottom: 12 }} />
-          <p style={{ fontSize: 14.5, fontWeight: 600, color: "#374151", marginBottom: 6 }}>
+          <CheckCircle2 size={40} color={dark ? "#30363D" : "#E5E7EB"} style={{ marginBottom: 12 }} />
+          <p style={{ fontSize: 14.5, fontWeight: 600, color: txt2, marginBottom: 6 }}>
             {filterStatus || filterPriority || filterProject ? "Nenhuma tarefa com esses filtros" : "Nenhuma tarefa ainda"}
           </p>
           {!filterStatus && !filterPriority && !filterProject && (
-            <p style={{ fontSize: 13, color: "#9CA3AF", marginBottom: 20 }}>
+            <p style={{ fontSize: 13, color: txtFaint, marginBottom: 20 }}>
               Crie sua primeira tarefa para começar.
             </p>
           )}
@@ -424,11 +453,11 @@ export default function TasksModule({ user }: { user: AppUser | null }) {
             ))}
             {showSeparator && (
               <div style={{ display: "flex", alignItems: "center", gap: 10, margin: "6px 0 2px" }}>
-                <div style={{ flex: 1, height: 1, background: "#E5E7EB" }} />
-                <span style={{ fontSize: 11.5, fontWeight: 600, color: "#9CA3AF", textTransform: "uppercase", letterSpacing: "0.06em", whiteSpace: "nowrap" }}>
+                <div style={{ flex: 1, height: 1, background: bord }} />
+                <span style={{ fontSize: 11.5, fontWeight: 600, color: txtFaint, textTransform: "uppercase", letterSpacing: "0.06em", whiteSpace: "nowrap" }}>
                   Concluídas · {done.length}
                 </span>
-                <div style={{ flex: 1, height: 1, background: "#E5E7EB" }} />
+                <div style={{ flex: 1, height: 1, background: bord }} />
               </div>
             )}
             {done.map((task) => (
@@ -451,6 +480,13 @@ export default function TasksModule({ user }: { user: AppUser | null }) {
           onSaved={() => { load(); setModal({ open: false, editing: null }); }}
         />
       )}
+
+      <style>{`
+        @keyframes pulse {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.5; }
+        }
+      `}</style>
     </div>
   );
 }

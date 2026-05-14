@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { DM_Sans } from "next/font/google";
 import "./globals.css";
+import { ThemeProvider } from "@/contexts/ThemeContext";
 
 const dmSans = DM_Sans({
   subsets: ["latin"],
@@ -22,7 +23,9 @@ export default function RootLayout({
   return (
     <html lang="pt-BR" className={`${dmSans.variable} h-full`}>
       <body className="min-h-full" style={{ fontFamily: "DM Sans, sans-serif" }} suppressHydrationWarning>
-        {children}
+        <ThemeProvider>
+          {children}
+        </ThemeProvider>
       </body>
     </html>
   );

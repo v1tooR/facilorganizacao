@@ -7,6 +7,7 @@ import {
   Circle, Loader2, ArrowRight,
 } from "lucide-react";
 import { PLANS } from "@/lib/plans";
+import { useDark } from "@/contexts/ThemeContext";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -101,6 +102,12 @@ const TASK_STATUS_ORDER: TaskStatus[] = ["IN_PROGRESS", "PENDING", "COMPLETED", 
 function Modal({ title, onClose, children, wide }: {
   title: string; onClose: () => void; children: React.ReactNode; wide?: boolean;
 }) {
+  const { dark } = useDark();
+  const surface  = dark ? "#1C2128" : "#fff";
+  const txt      = dark ? "#E6EDF3" : "#111827";
+  const txtMuted = dark ? "#8D96A0" : "#6B7280";
+  const bord     = dark ? "#30363D" : "#E5E7EB";
+
   useEffect(() => {
     const handler = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
     window.addEventListener("keydown", handler);
@@ -110,17 +117,18 @@ function Modal({ title, onClose, children, wide }: {
   return (
     <div style={{
       position: "fixed", inset: 0, zIndex: 300,
-      background: "rgba(0,0,0,0.4)",
+      background: "rgba(0,0,0,0.45)",
       display: "flex", alignItems: "center", justifyContent: "center", padding: 16,
     }} onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <div style={{
-        background: "#fff", borderRadius: 14, padding: 24,
+        background: surface, borderRadius: 14, padding: 24,
         width: "100%", maxWidth: wide ? 520 : 460,
-        boxShadow: "0 20px 60px rgba(0,0,0,0.18)", maxHeight: "90vh", overflowY: "auto",
+        boxShadow: "0 20px 60px rgba(0,0,0,0.3)", maxHeight: "90vh", overflowY: "auto",
+        border: dark ? `1px solid ${bord}` : "none",
       }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
-          <h3 style={{ fontSize: 16, fontWeight: 700, color: "#111827" }}>{title}</h3>
-          <button onClick={onClose} style={{ all: "unset", cursor: "pointer", color: "#6B7280" }}><X size={18} /></button>
+          <h3 style={{ fontSize: 16, fontWeight: 700, color: txt }}>{title}</h3>
+          <button onClick={onClose} style={{ all: "unset", cursor: "pointer", color: txtMuted }}><X size={18} /></button>
         </div>
         {children}
       </div>
@@ -129,9 +137,11 @@ function Modal({ title, onClose, children, wide }: {
 }
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  const { dark } = useDark();
+  const txt2 = dark ? "#CDD5E0" : "#374151";
   return (
     <div>
-      <label style={{ display: "block", fontSize: 12.5, fontWeight: 600, color: "#374151", marginBottom: 5 }}>
+      <label style={{ display: "block", fontSize: 12.5, fontWeight: 600, color: txt2, marginBottom: 5 }}>
         {label}
       </label>
       {children}
@@ -240,6 +250,12 @@ function TaskRow({
   onEdit: (t: ProjectTask) => void;
   onDelete: (id: string) => void;
 }) {
+  const { dark } = useDark();
+  const txt      = dark ? "#E6EDF3" : "#111827";
+  const txtFaint = dark ? "#8B949E" : "#9CA3AF";
+  const rowBg    = dark ? (task.status === "COMPLETED" ? "#21262D" : "#1C2128") : (task.status === "COMPLETED" ? "#F9FAFB" : "#fff");
+  const rowBord  = dark ? "#30363D" : "#E5E7EB";
+
   const done = task.status === "COMPLETED";
   const overdue = !done && task.dueDate && new Date(task.dueDate) < new Date();
   const pCfg = PRIORITY_CFG[task.priority];
@@ -248,17 +264,16 @@ function TaskRow({
     <div style={{
       display: "flex", alignItems: "center", gap: 10,
       padding: "10px 12px", borderRadius: 10,
-      background: done ? "#F9FAFB" : "#fff",
-      border: "1.5px solid #E5E7EB",
+      background: rowBg, border: `1.5px solid ${rowBord}`,
       transition: "box-shadow 0.12s",
     }}
-      onMouseEnter={(e) => (e.currentTarget.style.boxShadow = "0 2px 8px rgba(0,0,0,0.07)")}
+      onMouseEnter={(e) => (e.currentTarget.style.boxShadow = dark ? "0 2px 8px rgba(0,0,0,0.3)" : "0 2px 8px rgba(0,0,0,0.07)")}
       onMouseLeave={(e) => (e.currentTarget.style.boxShadow = "")}
     >
       {/* Checkbox */}
       <button onClick={() => onToggle(task)} style={{
         all: "unset", width: 20, height: 20, borderRadius: "50%", flexShrink: 0, cursor: "pointer",
-        border: done ? "none" : "2px solid #D1D5DB",
+        border: done ? "none" : `2px solid ${dark ? "#6E7681" : "#D1D5DB"}`,
         background: done ? "#10B981" : "transparent",
         display: "flex", alignItems: "center", justifyContent: "center",
       }}>
@@ -269,14 +284,14 @@ function TaskRow({
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{
           fontSize: 13.5, fontWeight: 600,
-          color: done ? "#9CA3AF" : "#111827",
+          color: done ? txtFaint : txt,
           textDecoration: done ? "line-through" : "none",
           whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
         }}>
           {task.title}
         </div>
         {task.dueDate && (
-          <div style={{ display: "flex", alignItems: "center", gap: 4, marginTop: 2, fontSize: 11, color: overdue ? "#EF4444" : "#9CA3AF" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 4, marginTop: 2, fontSize: 11, color: overdue ? "#EF4444" : txtFaint }}>
             <Clock size={10} />{fmtDate(task.dueDate)}
             {overdue && " · Atrasada"}
           </div>
@@ -287,7 +302,7 @@ function TaskRow({
       <div style={{ width: 8, height: 8, borderRadius: "50%", background: pCfg.color, flexShrink: 0 }} title={pCfg.label} />
 
       {/* Actions */}
-      <button onClick={() => onEdit(task)} style={{ all: "unset", cursor: "pointer", color: "#9CA3AF", display: "flex", padding: "2px" }}>
+      <button onClick={() => onEdit(task)} style={{ all: "unset", cursor: "pointer", color: txtFaint, display: "flex", padding: "2px" }}>
         <Pencil size={13} />
       </button>
       <button onClick={() => onDelete(task.id)} style={{ all: "unset", cursor: "pointer", color: "#EF4444", display: "flex", padding: "2px" }}>
@@ -405,6 +420,16 @@ function ProjectDrawer({
   onProjectUpdated: (p: Project) => void;
   onProjectDeleted: (id: string) => void;
 }) {
+  const { dark } = useDark();
+  const txt      = dark ? "#E6EDF3" : "#111827";
+  const txt2     = dark ? "#CDD5E0" : "#374151";
+  const txtMuted = dark ? "#8D96A0" : "#6B7280";
+  const txtFaint = dark ? "#8B949E" : "#9CA3AF";
+  const surface  = dark ? "#1C2128" : "#fff";
+  const surfSec  = dark ? "#21262D" : "#F9FAFB";
+  const bord     = dark ? "#30363D" : "#F3F4F6";
+  const bord2    = dark ? "#30363D" : "#E5E7EB";
+
   const [project, setProject] = useState<Project | null>(null);
   const [loading, setLoading] = useState(true);
   const [editProject, setEditProject] = useState(false);
@@ -489,7 +514,7 @@ function ProjectDrawer({
     <>
       {/* Overlay */}
       <div
-        style={{ position: "fixed", inset: 0, zIndex: 200, background: "rgba(0,0,0,0.35)" }}
+        style={{ position: "fixed", inset: 0, zIndex: 200, background: "rgba(0,0,0,0.4)" }}
         onClick={onClose}
       />
 
@@ -497,24 +522,25 @@ function ProjectDrawer({
       <div style={{
         position: "fixed", top: 0, right: 0, bottom: 0, zIndex: 201,
         width: "min(700px, 100vw)",
-        background: "#fff",
-        boxShadow: "-8px 0 40px rgba(0,0,0,0.15)",
+        background: surface,
+        boxShadow: dark ? "-8px 0 40px rgba(0,0,0,0.5)" : "-8px 0 40px rgba(0,0,0,0.15)",
         overflowY: "auto",
         display: "flex", flexDirection: "column",
+        borderLeft: dark ? `1px solid ${bord2}` : "none",
       }}>
 
         {loading ? (
           <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <Loader2 size={28} color="#D1D5DB" style={{ animation: "spin 1s linear infinite" }} />
+            <Loader2 size={28} color={dark ? "#30363D" : "#D1D5DB"} style={{ animation: "spin 1s linear infinite" }} />
           </div>
         ) : !project ? (
           <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <p style={{ fontSize: 14, color: "#9CA3AF" }}>Projeto não encontrado.</p>
+            <p style={{ fontSize: 14, color: txtFaint }}>Projeto não encontrado.</p>
           </div>
         ) : (
           <>
             {/* ── Header ─────────────────────────────────────────────── */}
-            <div style={{ padding: "20px 24px 0", borderBottom: "1px solid #F3F4F6", paddingBottom: 20 }}>
+            <div style={{ padding: "20px 24px 20px", borderBottom: `1px solid ${bord}` }}>
               <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
@@ -532,18 +558,18 @@ function ProjectDrawer({
                       </span>
                     )}
                   </div>
-                  <h2 style={{ fontSize: 20, fontWeight: 800, color: "#111827", lineHeight: 1.2, marginBottom: 8 }}>
+                  <h2 style={{ fontSize: 20, fontWeight: 800, color: txt, lineHeight: 1.2, marginBottom: 8 }}>
                     {project.name}
                   </h2>
                   {/* Datas */}
                   <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
                     {project.startDate && (
-                      <span style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12.5, color: "#6B7280" }}>
+                      <span style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12.5, color: txtMuted }}>
                         <Calendar size={13} /> Início: {fmtDateFull(project.startDate)}
                       </span>
                     )}
                     {project.dueDate && (
-                      <span style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12.5, color: overdue ? "#EF4444" : "#6B7280", fontWeight: overdue ? 600 : 400 }}>
+                      <span style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12.5, color: overdue ? "#EF4444" : txtMuted, fontWeight: overdue ? 600 : 400 }}>
                         <Calendar size={13} /> Entrega: {fmtDateFull(project.dueDate)}
                       </span>
                     )}
@@ -553,8 +579,9 @@ function ProjectDrawer({
                 <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
                   <button onClick={() => setEditProject(true)} style={{
                     all: "unset", cursor: "pointer", padding: "7px 12px", borderRadius: 8,
-                    background: "#F3F4F6", color: "#374151", fontSize: 13, fontWeight: 600,
+                    background: surfSec, color: txt2, fontSize: 13, fontWeight: 600,
                     display: "flex", alignItems: "center", gap: 5,
+                    border: dark ? `1px solid ${bord2}` : "none",
                   }}>
                     <Pencil size={13} /> Editar
                   </button>
@@ -566,7 +593,8 @@ function ProjectDrawer({
                   </button>
                   <button onClick={onClose} style={{
                     all: "unset", cursor: "pointer", padding: "7px 10px", borderRadius: 8,
-                    background: "#F3F4F6", color: "#374151", display: "flex", alignItems: "center",
+                    background: surfSec, color: txt2, display: "flex", alignItems: "center",
+                    border: dark ? `1px solid ${bord2}` : "none",
                   }}>
                     <X size={16} />
                   </button>
@@ -576,12 +604,12 @@ function ProjectDrawer({
               {/* Progress */}
               <div style={{ marginTop: 16 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-                  <span style={{ fontSize: 12.5, color: "#6B7280", fontWeight: 500 }}>
+                  <span style={{ fontSize: 12.5, color: txtMuted, fontWeight: 500 }}>
                     Progresso — {project.completedTaskCount} de {project._count.tasks} tarefa{project._count.tasks !== 1 ? "s" : ""} concluída{project.completedTaskCount !== 1 ? "s" : ""}
                   </span>
-                  <span style={{ fontSize: 13, fontWeight: 700, color: "#374151" }}>{progress}%</span>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: txt2 }}>{progress}%</span>
                 </div>
-                <div style={{ height: 7, background: "#E5E7EB", borderRadius: 99 }}>
+                <div style={{ height: 7, background: dark ? "#30363D" : "#E5E7EB", borderRadius: 99 }}>
                   <div style={{
                     height: "100%", borderRadius: 99,
                     background: progress === 100 ? "#10B981" : "linear-gradient(90deg,#6366F1,#8B5CF6)",
@@ -593,22 +621,22 @@ function ProjectDrawer({
 
             {/* ── Description ────────────────────────────────────────── */}
             {project.description && (
-              <div style={{ padding: "16px 24px", borderBottom: "1px solid #F3F4F6" }}>
-                <p style={{ fontSize: 13.5, color: "#374151", lineHeight: 1.6, margin: 0 }}>{project.description}</p>
+              <div style={{ padding: "16px 24px", borderBottom: `1px solid ${bord}` }}>
+                <p style={{ fontSize: 13.5, color: txt2, lineHeight: 1.6, margin: 0 }}>{project.description}</p>
               </div>
             )}
 
             {/* ── Tasks Section ───────────────────────────────────────── */}
             <div style={{ padding: "20px 24px", flex: 1 }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
-                <h3 style={{ fontSize: 14, fontWeight: 700, color: "#111827" }}>
+                <h3 style={{ fontSize: 14, fontWeight: 700, color: txt }}>
                   Tarefas ({project._count.tasks})
                 </h3>
                 <button onClick={() => { setShowQuickForm(true); }}
                   style={{
                     all: "unset", cursor: "pointer", display: "flex", alignItems: "center", gap: 5,
                     fontSize: 13, fontWeight: 600, color: "#6366F1",
-                    padding: "5px 12px", borderRadius: 8, background: "#EEF2FF",
+                    padding: "5px 12px", borderRadius: 8, background: dark ? "#1A1D3A" : "#EEF2FF",
                   }}>
                   <Plus size={14} /> Adicionar
                 </button>
@@ -618,7 +646,9 @@ function ProjectDrawer({
               {showQuickForm && (
                 <div style={{
                   display: "flex", gap: 8, alignItems: "center", marginBottom: 12,
-                  padding: "10px 12px", borderRadius: 10, border: "1.5px solid #6366F1", background: "#F5F3FF",
+                  padding: "10px 12px", borderRadius: 10,
+                  border: "1.5px solid #6366F1",
+                  background: dark ? "#1A1A2E" : "#F5F3FF",
                 }}>
                   <input ref={quickInputRef}
                     className="input-base" placeholder="Título da tarefa..."
@@ -630,7 +660,7 @@ function ProjectDrawer({
                     style={{ fontSize: 13.5, flex: 1, border: "none", background: "transparent", padding: 0 }}
                   />
                   <select value={quickPriority} onChange={(e) => setQuickPriority(e.target.value as TaskPriority)}
-                    style={{ fontSize: 12, border: "1.5px solid #E5E7EB", borderRadius: 7, padding: "4px 6px", background: "#fff", fontFamily: "DM Sans, sans-serif", color: "#374151" }}>
+                    style={{ fontSize: 12, border: `1.5px solid ${bord2}`, borderRadius: 7, padding: "4px 6px", background: surface, fontFamily: "DM Sans, sans-serif", color: txt2 }}>
                     <option value="LOW">Baixa</option>
                     <option value="MEDIUM">Média</option>
                     <option value="HIGH">Alta</option>
@@ -641,7 +671,7 @@ function ProjectDrawer({
                     {addingQuick ? "..." : "Criar"}
                   </button>
                   <button onClick={() => { setShowQuickForm(false); setQuickTitle(""); }}
-                    style={{ all: "unset", cursor: "pointer", color: "#9CA3AF", display: "flex" }}>
+                    style={{ all: "unset", cursor: "pointer", color: txtFaint, display: "flex" }}>
                     <X size={16} />
                   </button>
                 </div>
@@ -658,8 +688,8 @@ function ProjectDrawer({
               {/* Empty state */}
               {tasks.length === 0 && !showQuickForm && (
                 <div style={{ textAlign: "center", padding: "36px 0" }}>
-                  <CheckCircle2 size={36} color="#E5E7EB" style={{ marginBottom: 10 }} />
-                  <p style={{ fontSize: 13.5, color: "#9CA3AF", marginBottom: 12 }}>Nenhuma tarefa neste projeto.</p>
+                  <CheckCircle2 size={36} color={dark ? "#30363D" : "#E5E7EB"} style={{ marginBottom: 10 }} />
+                  <p style={{ fontSize: 13.5, color: txtFaint, marginBottom: 12 }}>Nenhuma tarefa neste projeto.</p>
                   <button onClick={() => setShowQuickForm(true)} style={{
                     all: "unset", cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 6,
                     padding: "9px 16px", borderRadius: 9, background: "#6366F1", color: "#fff", fontSize: 13, fontWeight: 600,
@@ -685,7 +715,7 @@ function ProjectDrawer({
               {/* Completed tasks */}
               {doneTasks.length > 0 && (
                 <div style={{ marginBottom: 14 }}>
-                  <p style={{ fontSize: 12, fontWeight: 600, color: "#9CA3AF", letterSpacing: "0.06em", textTransform: "uppercase", marginBottom: 8 }}>
+                  <p style={{ fontSize: 12, fontWeight: 600, color: txtFaint, letterSpacing: "0.06em", textTransform: "uppercase", marginBottom: 8 }}>
                     Concluídas ({doneTasks.length})
                   </p>
                   <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
@@ -703,7 +733,7 @@ function ProjectDrawer({
               {/* Cancelled tasks */}
               {cancelledTasks.length > 0 && (
                 <div>
-                  <p style={{ fontSize: 12, fontWeight: 600, color: "#9CA3AF", letterSpacing: "0.06em", textTransform: "uppercase", marginBottom: 8 }}>
+                  <p style={{ fontSize: 12, fontWeight: 600, color: txtFaint, letterSpacing: "0.06em", textTransform: "uppercase", marginBottom: 8 }}>
                     Canceladas ({cancelledTasks.length})
                   </p>
                   <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
@@ -744,6 +774,10 @@ function ProjectDrawer({
           onSaved={load}
         />
       )}
+
+      <style>{`
+        @keyframes spin { to { transform: rotate(360deg); } }
+      `}</style>
     </>
   );
 }
@@ -756,6 +790,12 @@ function ProjectCard({ project, onOpen, onEdit, onDelete }: {
   onEdit: (p: Project) => void;
   onDelete: (id: string) => void;
 }) {
+  const { dark } = useDark();
+  const txt      = dark ? "#E6EDF3" : "#111827";
+  const txt2     = dark ? "#CDD5E0" : "#374151";
+  const txtMuted = dark ? "#8D96A0" : "#6B7280";
+  const txtFaint = dark ? "#8B949E" : "#9CA3AF";
+
   const sc = STATUS_CFG[project.status] ?? STATUS_CFG.PLANNING;
   const progress = computedProgress(project);
   const overdue = isOverdue(project.dueDate, project.status);
@@ -772,7 +812,7 @@ function ProjectCard({ project, onOpen, onEdit, onDelete }: {
         position: "relative",
       }}
       onMouseEnter={(e) => {
-        e.currentTarget.style.boxShadow = "0 8px 24px rgba(0,0,0,0.1)";
+        e.currentTarget.style.boxShadow = dark ? "0 8px 24px rgba(0,0,0,0.4)" : "0 8px 24px rgba(0,0,0,0.1)";
         e.currentTarget.style.transform = "translateY(-1px)";
       }}
       onMouseLeave={(e) => {
@@ -793,13 +833,13 @@ function ProjectCard({ project, onOpen, onEdit, onDelete }: {
               </span>
             )}
           </div>
-          <h3 style={{ fontSize: 14.5, fontWeight: 700, color: "#111827", lineHeight: 1.3, marginBottom: 2 }}>
+          <h3 style={{ fontSize: 14.5, fontWeight: 700, color: txt, lineHeight: 1.3, marginBottom: 2 }}>
             {project.name}
           </h3>
         </div>
         {/* Edit/Delete buttons — stop propagation to not open drawer */}
         <div style={{ display: "flex", gap: 4, flexShrink: 0 }} onClick={(e) => e.stopPropagation()}>
-          <button onClick={() => onEdit(project)} style={{ all: "unset", cursor: "pointer", color: "#9CA3AF", padding: "4px" }}>
+          <button onClick={() => onEdit(project)} style={{ all: "unset", cursor: "pointer", color: txtFaint, padding: "4px" }}>
             <Pencil size={13} />
           </button>
           <button onClick={() => onDelete(project.id)} style={{ all: "unset", cursor: "pointer", color: "#EF4444", padding: "4px" }}>
@@ -810,7 +850,7 @@ function ProjectCard({ project, onOpen, onEdit, onDelete }: {
 
       {/* Description */}
       {project.description && (
-        <p style={{ fontSize: 12.5, color: "#6B7280", lineHeight: 1.5, margin: 0,
+        <p style={{ fontSize: 12.5, color: txtMuted, lineHeight: 1.5, margin: 0,
           display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
           {project.description}
         </p>
@@ -819,12 +859,12 @@ function ProjectCard({ project, onOpen, onEdit, onDelete }: {
       {/* Progress */}
       <div>
         <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 5 }}>
-          <span style={{ fontSize: 12, color: "#6B7280" }}>
+          <span style={{ fontSize: 12, color: txtMuted }}>
             {total === 0 ? "Sem tarefas" : `${done}/${total} concluída${done !== 1 ? "s" : ""}`}
           </span>
-          <span style={{ fontSize: 12, fontWeight: 700, color: "#374151" }}>{progress}%</span>
+          <span style={{ fontSize: 12, fontWeight: 700, color: txt2 }}>{progress}%</span>
         </div>
-        <div style={{ height: 5, background: "#E5E7EB", borderRadius: 99 }}>
+        <div style={{ height: 5, background: dark ? "#30363D" : "#E5E7EB", borderRadius: 99 }}>
           <div style={{
             height: "100%", borderRadius: 99,
             background: progress === 100 ? "#10B981" : "linear-gradient(90deg,#6366F1,#8B5CF6)",
@@ -837,12 +877,12 @@ function ProjectCard({ project, onOpen, onEdit, onDelete }: {
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <div style={{ display: "flex", gap: 10 }}>
           {project.dueDate && (
-            <span style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11.5, color: overdue ? "#EF4444" : "#9CA3AF", fontWeight: overdue ? 600 : 400 }}>
+            <span style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11.5, color: overdue ? "#EF4444" : txtFaint, fontWeight: overdue ? 600 : 400 }}>
               <Calendar size={11} /> {fmtDate(project.dueDate)}
             </span>
           )}
         </div>
-        <span style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 12, color: "#9CA3AF" }}>
+        <span style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 12, color: txtFaint }}>
           Ver detalhes <ChevronRight size={13} />
         </span>
       </div>
@@ -853,6 +893,11 @@ function ProjectCard({ project, onOpen, onEdit, onDelete }: {
 // ── Main Module ───────────────────────────────────────────────────────────────
 
 export default function ProjectsModule({ user }: { user: AppUser | null }) {
+  const { dark } = useDark();
+  const txt      = dark ? "#E6EDF3" : "#111827";
+  const txtMuted = dark ? "#8D96A0" : "#6B7280";
+  const bgSec    = dark ? "#21262D" : "#F3F4F6";
+
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [drawerProjectId, setDrawerProjectId] = useState<string | null>(null);
@@ -900,8 +945,8 @@ export default function ProjectsModule({ user }: { user: AppUser | null }) {
       {/* Header */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
         <div>
-          <h2 style={{ fontSize: 18, fontWeight: 800, color: "#111827" }}>Projetos</h2>
-          <p style={{ fontSize: 13, color: "#6B7280", marginTop: 2 }}>
+          <h2 style={{ fontSize: 18, fontWeight: 800, color: txt }}>Projetos</h2>
+          <p style={{ fontSize: 13, color: txtMuted, marginTop: 2 }}>
             {projects.length} projeto{projects.length !== 1 ? "s" : ""} · limite: {planLimit}
           </p>
         </div>
@@ -912,7 +957,7 @@ export default function ProjectsModule({ user }: { user: AppUser | null }) {
       </div>
 
       {atLimit && (
-        <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 14px", background: "#FEF3C7", borderRadius: 9, marginBottom: 14, fontSize: 13, color: "#92400E" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 14px", background: dark ? "#2D2008" : "#FEF3C7", borderRadius: 9, marginBottom: 14, fontSize: 13, color: dark ? "#F59E0B" : "#92400E" }}>
           <AlertCircle size={14} /> Limite do plano atingido. Faça upgrade para criar mais projetos.
         </div>
       )}
@@ -921,14 +966,14 @@ export default function ProjectsModule({ user }: { user: AppUser | null }) {
       {loading ? (
         <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
           {[1, 2, 3].map((i) => (
-            <div key={i} style={{ height: 140, borderRadius: 12, background: "#F3F4F6", animation: "pulse 1.5s ease-in-out infinite" }} />
+            <div key={i} style={{ height: 140, borderRadius: 12, background: bgSec, animation: "pulse 1.5s ease-in-out infinite" }} />
           ))}
         </div>
       ) : projects.length === 0 ? (
         <div style={{ textAlign: "center", padding: "56px 0" }}>
-          <FolderKanban size={44} color="#E5E7EB" style={{ marginBottom: 14 }} />
-          <p style={{ fontSize: 15, fontWeight: 600, color: "#374151", marginBottom: 6 }}>Nenhum projeto ainda</p>
-          <p style={{ fontSize: 13.5, color: "#9CA3AF", marginBottom: 20 }}>
+          <FolderKanban size={44} color={dark ? "#30363D" : "#E5E7EB"} style={{ marginBottom: 14 }} />
+          <p style={{ fontSize: 15, fontWeight: 600, color: dark ? "#CDD5E0" : "#374151", marginBottom: 6 }}>Nenhum projeto ainda</p>
+          <p style={{ fontSize: 13.5, color: dark ? "#8B949E" : "#9CA3AF", marginBottom: 20 }}>
             Crie um projeto para organizar suas tarefas por objetivo.
           </p>
           <button onClick={openCreate} className="btn-primary"
@@ -969,6 +1014,13 @@ export default function ProjectsModule({ user }: { user: AppUser | null }) {
           }}
         />
       )}
+
+      <style>{`
+        @keyframes pulse {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.5; }
+        }
+      `}</style>
     </div>
   );
 }

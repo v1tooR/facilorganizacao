@@ -6,6 +6,7 @@ import {
   Wallet, X, ArrowRight,
 } from "lucide-react";
 import type { SearchResultItem } from "@/app/api/search/route";
+import { useDark } from "@/contexts/ThemeContext";
 
 type Module = "dashboard" | "tasks" | "finance" | "projects" | "notes" | "settings";
 
@@ -28,6 +29,7 @@ const TYPE_CFG = {
 // ── SearchBar ────────────────────────────────────────────────────────────────
 
 export default function SearchBar({ onNavigate }: { onNavigate: (m: Module) => void }) {
+  const { dark } = useDark();
   const [query, setQuery]     = useState("");
   const [results, setResults] = useState<SearchResults | null>(null);
   const [loading, setLoading] = useState(false);
@@ -141,6 +143,10 @@ export default function SearchBar({ onNavigate }: { onNavigate: (m: Module) => v
   const renderGroup = (items: SearchResultItem[], type: keyof typeof TYPE_CFG) => {
     if (!items.length) return null;
     const { label, Icon, color, bg } = TYPE_CFG[type];
+    const activeBg = dark ? "#2D2008" : "#FFFBEB";
+    const itemTextPrimary = dark ? "#E6EDF3" : "#1F2937";
+    const itemTextSub = dark ? "#6E7681" : "#6B7280";
+    const itemMeta = dark ? "#484F58" : "#9CA3AF";
 
     return (
       <div key={type}>
@@ -152,7 +158,7 @@ export default function SearchBar({ onNavigate }: { onNavigate: (m: Module) => v
           <div style={{ width: 16, height: 16, borderRadius: 4, background: bg, display: "flex", alignItems: "center", justifyContent: "center" }}>
             <Icon size={9} color={color} />
           </div>
-          <span style={{ fontSize: 10.5, fontWeight: 700, color: "#9CA3AF", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+          <span style={{ fontSize: 10.5, fontWeight: 700, color: textMuted, textTransform: "uppercase", letterSpacing: "0.06em" }}>
             {label}
           </span>
         </div>
@@ -169,7 +175,7 @@ export default function SearchBar({ onNavigate }: { onNavigate: (m: Module) => v
               style={{
                 padding: "8px 14px",
                 cursor: "pointer",
-                background: isActive ? "#FFFBEB" : "transparent",
+                background: isActive ? activeBg : "transparent",
                 borderLeft: `2.5px solid ${isActive ? "#F59E0B" : "transparent"}`,
                 display: "flex", alignItems: "center", gap: 10,
                 transition: "background 0.08s",
@@ -182,11 +188,11 @@ export default function SearchBar({ onNavigate }: { onNavigate: (m: Module) => v
 
               {/* Texto */}
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 13, fontWeight: 600, color: "#1F2937", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                <div style={{ fontSize: 13, fontWeight: 600, color: itemTextPrimary, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                   {item.title}
                 </div>
                 {item.subtitle && (
-                  <div style={{ fontSize: 11.5, color: "#6B7280", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", marginTop: 1 }}>
+                  <div style={{ fontSize: 11.5, color: itemTextSub, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", marginTop: 1 }}>
                     {item.subtitle}
                   </div>
                 )}
@@ -194,7 +200,7 @@ export default function SearchBar({ onNavigate }: { onNavigate: (m: Module) => v
 
               {/* Meta */}
               {item.meta && (
-                <span style={{ fontSize: 10.5, color: "#9CA3AF", flexShrink: 0, fontWeight: 500, textAlign: "right", maxWidth: 100, lineHeight: 1.3 }}>
+                <span style={{ fontSize: 10.5, color: itemMeta, flexShrink: 0, fontWeight: 500, textAlign: "right", maxWidth: 100, lineHeight: 1.3 }}>
                   {item.meta}
                 </span>
               )}
@@ -206,6 +212,20 @@ export default function SearchBar({ onNavigate }: { onNavigate: (m: Module) => v
       </div>
     );
   };
+
+  // ── Paleta dark/light ──────────────────────────────────────────────────────
+
+  const inputBg   = open ? (dark ? "#1C2128" : "#fff") : (dark ? "#21262D" : "#F3F4F6");
+  const inputBorder = open ? "#F59E0B" : (dark ? "#30363D" : "transparent");
+  const inputColor = dark ? "#E6EDF3" : "#374151";
+  const dropdownBg = dark ? "#1C2128" : "#fff";
+  const dropdownBorder = dark ? "#30363D" : "#E5E7EB";
+  const divider = dark ? "#21262D" : "#F3F4F6";
+  const textMuted = dark ? "#6E7681" : "#9CA3AF";
+  const textFaint = dark ? "#484F58" : "#D1D5DB";
+  const kbdBg = dark ? "#21262D" : "#F3F4F6";
+  const kbdColor = dark ? "#8D96A0" : "#C4C4C4";
+  const emptyIconColor = dark ? "#30363D" : "#E5E7EB";
 
   // ── Render ─────────────────────────────────────────────────────────────────
 
@@ -225,7 +245,7 @@ export default function SearchBar({ onNavigate }: { onNavigate: (m: Module) => v
         ) : (
           <Search size={14} style={{
             position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)",
-            color: open ? "#F59E0B" : "#9CA3AF",
+            color: open ? "#F59E0B" : textMuted,
             pointerEvents: "none", transition: "color 0.15s",
           }} />
         )}
@@ -241,11 +261,11 @@ export default function SearchBar({ onNavigate }: { onNavigate: (m: Module) => v
           autoComplete="off"
           style={{
             padding: "7px 28px 7px 32px",
-            background: open ? "#fff" : "#F3F4F6",
-            border: `1.5px solid ${open ? "#F59E0B" : "transparent"}`,
+            background: inputBg,
+            border: `1.5px solid ${inputBorder}`,
             borderRadius: 9,
             fontSize: 13,
-            color: "#374151",
+            color: inputColor,
             outline: "none",
             width: 250,
             fontFamily: "inherit",
@@ -260,7 +280,7 @@ export default function SearchBar({ onNavigate }: { onNavigate: (m: Module) => v
             style={{
               all: "unset", cursor: "pointer",
               position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)",
-              color: "#9CA3AF", display: "flex", padding: 2,
+              color: textMuted, display: "flex", padding: 2,
               borderRadius: 4,
             }}
           >
@@ -273,25 +293,27 @@ export default function SearchBar({ onNavigate }: { onNavigate: (m: Module) => v
       {open && (
         <div style={{
           position: "absolute", top: "calc(100% + 6px)", right: 0,
-          width: 380, background: "#fff",
-          borderRadius: 14, border: "1px solid #E5E7EB",
-          boxShadow: "0 12px 40px rgba(0,0,0,0.13), 0 2px 8px rgba(0,0,0,0.06)",
+          width: 380, background: dropdownBg,
+          borderRadius: 14, border: `1px solid ${dropdownBorder}`,
+          boxShadow: dark
+            ? "0 12px 40px rgba(0,0,0,0.5), 0 2px 8px rgba(0,0,0,0.3)"
+            : "0 12px 40px rgba(0,0,0,0.13), 0 2px 8px rgba(0,0,0,0.06)",
           zIndex: 300, overflow: "hidden",
         }}>
 
           {/* Cabeçalho do dropdown */}
           <div style={{
-            padding: "9px 14px", borderBottom: "1px solid #F3F4F6",
+            padding: "9px 14px", borderBottom: `1px solid ${divider}`,
             display: "flex", justifyContent: "space-between", alignItems: "center",
           }}>
-            <span style={{ fontSize: 11.5, color: "#9CA3AF" }}>
+            <span style={{ fontSize: 11.5, color: textMuted }}>
               {loading
                 ? "Buscando..."
                 : hasAny
                   ? `${flat.length} resultado${flat.length !== 1 ? "s" : ""} para "${query}"`
                   : " "}
             </span>
-            <span style={{ fontSize: 10.5, color: "#D1D5DB" }}>ESC para fechar</span>
+            <span style={{ fontSize: 10.5, color: textFaint }}>ESC para fechar</span>
           </div>
 
           {/* Corpo */}
@@ -304,18 +326,18 @@ export default function SearchBar({ onNavigate }: { onNavigate: (m: Module) => v
                   borderRadius: "50%", animation: "sb-spin 0.7s linear infinite",
                   margin: "0 auto 8px",
                 }} />
-                <div style={{ fontSize: 13, color: "#9CA3AF" }}>Buscando...</div>
+                <div style={{ fontSize: 13, color: textMuted }}>Buscando...</div>
               </div>
             )}
 
             {/* Empty state */}
             {isEmpty && !loading && !hasError && (
               <div style={{ padding: "32px 16px", textAlign: "center" }}>
-                <Search size={30} color="#E5E7EB" style={{ marginBottom: 10 }} />
-                <div style={{ fontSize: 14, fontWeight: 600, color: "#6B7280" }}>
+                <Search size={30} color={emptyIconColor} style={{ marginBottom: 10 }} />
+                <div style={{ fontSize: 14, fontWeight: 600, color: dark ? "#8D96A0" : "#6B7280" }}>
                   Nenhum resultado para &quot;{query}&quot;
                 </div>
-                <div style={{ fontSize: 12, color: "#9CA3AF", marginTop: 4 }}>
+                <div style={{ fontSize: 12, color: textMuted, marginTop: 4 }}>
                   Tente outros termos ou verifique a ortografia
                 </div>
               </div>
@@ -347,12 +369,12 @@ export default function SearchBar({ onNavigate }: { onNavigate: (m: Module) => v
           {/* Rodapé com atalhos de teclado */}
           {hasAny && (
             <div style={{
-              padding: "7px 14px", borderTop: "1px solid #F3F4F6",
+              padding: "7px 14px", borderTop: `1px solid ${divider}`,
               display: "flex", gap: 14,
             }}>
               {[["↑↓", "navegar"], ["↵", "abrir"], ["ESC", "fechar"]].map(([key, desc]) => (
-                <span key={key} style={{ fontSize: 10.5, color: "#C4C4C4", display: "flex", gap: 4, alignItems: "center" }}>
-                  <kbd style={{ background: "#F3F4F6", padding: "1px 5px", borderRadius: 4, fontFamily: "inherit", fontSize: 10 }}>{key}</kbd>
+                <span key={key} style={{ fontSize: 10.5, color: kbdColor, display: "flex", gap: 4, alignItems: "center" }}>
+                  <kbd style={{ background: kbdBg, padding: "1px 5px", borderRadius: 4, fontFamily: "inherit", fontSize: 10 }}>{key}</kbd>
                   {desc}
                 </span>
               ))}

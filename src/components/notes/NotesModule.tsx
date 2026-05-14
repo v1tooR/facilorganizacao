@@ -23,6 +23,7 @@ import {
   Trash2, X, Pencil, FolderKanban, CheckCircle2, AlertCircle, Copy, Check,
 } from "lucide-react";
 import { PLANS } from "@/lib/plans";
+import { useDark } from "@/contexts/ThemeContext";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -76,13 +77,14 @@ async function apiCall(url: string, opts?: RequestInit): Promise<{ ok: boolean; 
 // ── ColorPicker ───────────────────────────────────────────────────────────────
 
 function ColorPicker({ value, onChange }: { value: string; onChange: (c: string) => void }) {
+  const { dark } = useDark();
   return (
     <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
       {NOTE_COLORS.map((c) => (
         <button key={c} onClick={() => onChange(c)} style={{
           all: "unset", width: 22, height: 22, borderRadius: "50%",
           background: c, cursor: "pointer",
-          border: value === c ? "2.5px solid #374151" : "1.5px solid rgba(0,0,0,0.15)",
+          border: value === c ? `2.5px solid ${dark ? "#E6EDF3" : "#374151"}` : "1.5px solid rgba(0,0,0,0.15)",
           transition: "transform 0.1s",
           transform: value === c ? "scale(1.2)" : "none",
         }} />
@@ -96,6 +98,9 @@ function ColorPicker({ value, onChange }: { value: string; onChange: (c: string)
 function TagEditor({
   tags, onChange,
 }: { tags: string[]; onChange: (t: string[]) => void }) {
+  const { dark } = useDark();
+  const tagBg    = dark ? "#21262D" : "#F3F4F6";
+  const tagColor = dark ? "#CDD5E0" : "#374151";
   const [input, setInput] = useState("");
 
   const addTag = () => {
@@ -111,12 +116,12 @@ function TagEditor({
           <span key={tag} style={{
             display: "flex", alignItems: "center", gap: 4,
             fontSize: 12, padding: "3px 8px", borderRadius: 20,
-            background: "#F3F4F6", color: "#374151", fontWeight: 600,
+            background: tagBg, color: tagColor, fontWeight: 600,
           }}>
             #{tag}
             <button
               onClick={() => onChange(tags.filter((t) => t !== tag))}
-              style={{ all: "unset", cursor: "pointer", color: "#9CA3AF", display: "flex", lineHeight: 1 }}
+              style={{ all: "unset", cursor: "pointer", color: dark ? "#8D96A0" : "#9CA3AF", display: "flex", lineHeight: 1 }}
             >
               <X size={10} />
             </button>
@@ -136,6 +141,7 @@ function TagEditor({
 }
 
 // ── NoteCard ──────────────────────────────────────────────────────────────────
+// NoteCard keeps its colored background (pastel) — dark text on pastel is intentional.
 
 function NoteCard({ note, onClick, onPin, onDelete }: {
   note: Note;
@@ -265,6 +271,13 @@ function CreateNoteModal({ projects, onClose, onCreated }: {
   onClose: () => void;
   onCreated: () => void;
 }) {
+  const { dark } = useDark();
+  const surface  = dark ? "#1C2128" : "#fff";
+  const txt      = dark ? "#E6EDF3" : "#111827";
+  const txt2     = dark ? "#CDD5E0" : "#374151";
+  const txtMuted = dark ? "#8D96A0" : "#6B7280";
+  const bord     = dark ? "#30363D" : "#E5E7EB";
+
   const [form, setForm] = useState({
     title: "", content: "", color: "#FEF3C7",
     tags: [] as string[], projectId: "",
@@ -300,31 +313,34 @@ function CreateNoteModal({ projects, onClose, onCreated }: {
     } finally { setSaving(false); }
   };
 
+  const labelStyle: React.CSSProperties = { fontSize: 12.5, fontWeight: 600, color: txt2, display: "block", marginBottom: 5 };
+
   return (
     <div
       style={{
         position: "fixed", inset: 0, zIndex: 200,
-        background: "rgba(0,0,0,0.45)", display: "flex",
+        background: "rgba(0,0,0,0.5)", display: "flex",
         alignItems: "center", justifyContent: "center",
         padding: 16, backdropFilter: "blur(4px)",
       }}
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
       <div style={{
-        background: "#fff", borderRadius: 16, padding: 28,
+        background: surface, borderRadius: 16, padding: 28,
         width: "100%", maxWidth: 520, maxHeight: "90vh",
-        overflowY: "auto", boxShadow: "0 24px 64px rgba(0,0,0,0.2)",
+        overflowY: "auto", boxShadow: "0 24px 64px rgba(0,0,0,0.3)",
+        border: dark ? `1px solid ${bord}` : "none",
       }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 22 }}>
-          <h3 style={{ fontSize: 16, fontWeight: 700, color: "#111827" }}>Nova anotação</h3>
-          <button onClick={onClose} style={{ all: "unset", cursor: "pointer", color: "#6B7280", display: "flex" }}>
+          <h3 style={{ fontSize: 16, fontWeight: 700, color: txt }}>Nova anotação</h3>
+          <button onClick={onClose} style={{ all: "unset", cursor: "pointer", color: txtMuted, display: "flex" }}>
             <X size={18} />
           </button>
         </div>
 
         <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
           <div>
-            <label style={{ fontSize: 12.5, fontWeight: 600, color: "#374151", display: "block", marginBottom: 5 }}>Título *</label>
+            <label style={labelStyle}>Título *</label>
             <input
               ref={titleRef}
               className="input-base"
@@ -337,7 +353,7 @@ function CreateNoteModal({ projects, onClose, onCreated }: {
           </div>
 
           <div>
-            <label style={{ fontSize: 12.5, fontWeight: 600, color: "#374151", display: "block", marginBottom: 5 }}>Conteúdo</label>
+            <label style={labelStyle}>Conteúdo</label>
             <textarea
               className="input-base"
               value={form.content}
@@ -348,18 +364,18 @@ function CreateNoteModal({ projects, onClose, onCreated }: {
           </div>
 
           <div>
-            <label style={{ fontSize: 12.5, fontWeight: 600, color: "#374151", display: "block", marginBottom: 6 }}>Cor</label>
+            <label style={labelStyle}>Cor</label>
             <ColorPicker value={form.color} onChange={(c) => setForm({ ...form, color: c })} />
           </div>
 
           <div>
-            <label style={{ fontSize: 12.5, fontWeight: 600, color: "#374151", display: "block", marginBottom: 6 }}>Tags</label>
+            <label style={labelStyle}>Tags</label>
             <TagEditor tags={form.tags} onChange={(tags) => setForm({ ...form, tags })} />
           </div>
 
           {projects.length > 0 && (
             <div>
-              <label style={{ fontSize: 12.5, fontWeight: 600, color: "#374151", display: "block", marginBottom: 5 }}>Projeto</label>
+              <label style={labelStyle}>Projeto</label>
               <select
                 className="input-base"
                 value={form.projectId}
@@ -396,6 +412,15 @@ function NoteDrawer({ note, projects, onClose, onUpdate }: {
   onClose: () => void;
   onUpdate: () => void;
 }) {
+  const { dark } = useDark();
+  const txt      = dark ? "#E6EDF3" : "#111827";
+  const txt2     = dark ? "#CDD5E0" : "#374151";
+  const txtMuted = dark ? "#8D96A0" : "#6B7280";
+  const txtFaint = dark ? "#8B949E" : "#9CA3AF";
+  const surface  = dark ? "#1C2128" : "#fff";
+  const bgSec    = dark ? "#21262D" : "#F3F4F6";
+  const bord     = dark ? "#30363D" : "#F3F4F6";
+
   const [mode, setMode] = useState<"view" | "edit">("view");
   const [form, setForm] = useState({
     title: note.title,
@@ -413,7 +438,6 @@ function NoteDrawer({ note, projects, onClose, onUpdate }: {
   const [convertSuccess, setConvertSuccess] = useState(false);
   const [convertErr, setConvertErr] = useState("");
 
-  // Sync form when note changes (e.g. after pin/archive from parent reload)
   useEffect(() => {
     setForm({
       title: note.title,
@@ -428,7 +452,6 @@ function NoteDrawer({ note, projects, onClose, onUpdate }: {
     setErr(""); setConvertErr("");
   }, [note.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ESC: edit mode → view; view mode → close
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
@@ -524,6 +547,11 @@ function NoteDrawer({ note, projects, onClose, onUpdate }: {
   const bg = form.color ?? "#F8FAFC";
   const isLoading = (a: string) => actionLoading === a;
 
+  const sectionLabel: React.CSSProperties = {
+    fontSize: 11.5, fontWeight: 700, color: txtFaint,
+    textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 8,
+  };
+
   return (
     <>
       {/* Backdrop */}
@@ -531,26 +559,28 @@ function NoteDrawer({ note, projects, onClose, onUpdate }: {
         onClick={onClose}
         style={{
           position: "fixed", inset: 0, zIndex: 150,
-          background: "rgba(0,0,0,0.2)", backdropFilter: "blur(2px)",
+          background: "rgba(0,0,0,0.25)", backdropFilter: "blur(2px)",
         }}
       />
 
       {/* Panel */}
       <div style={{
         position: "fixed", top: 0, right: 0, bottom: 0, zIndex: 151,
-        width: "min(520px, 100vw)", background: "#fff",
-        boxShadow: "-4px 0 32px rgba(0,0,0,0.12)",
+        width: "min(520px, 100vw)", background: surface,
+        boxShadow: dark ? "-4px 0 32px rgba(0,0,0,0.5)" : "-4px 0 32px rgba(0,0,0,0.12)",
         display: "flex", flexDirection: "column", overflowY: "auto",
+        borderLeft: dark ? `1px solid ${bord}` : "none",
       }}>
-        {/* Color header */}
+        {/* Color header — keeps the note color as background */}
         <div style={{
           background: bg, padding: "18px 22px 16px",
-          borderBottom: "1px solid rgba(0,0,0,0.08)", flexShrink: 0,
+          borderBottom: dark ? "1px solid rgba(255,255,255,0.08)" : "1px solid rgba(0,0,0,0.08)",
+          flexShrink: 0,
         }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
             <ColorPicker value={form.color} onChange={(c) => setForm((f) => ({ ...f, color: c }))} />
             <button onClick={onClose} style={{
-              all: "unset", cursor: "pointer", color: "#6B7280",
+              all: "unset", cursor: "pointer", color: "#374151",
               width: 30, height: 30, display: "flex", alignItems: "center", justifyContent: "center",
               borderRadius: 7, background: "rgba(255,255,255,0.65)", flexShrink: 0,
             }}>
@@ -590,12 +620,12 @@ function NoteDrawer({ note, projects, onClose, onUpdate }: {
 
           {/* Content */}
           <div>
-            <div style={{ fontSize: 11.5, fontWeight: 700, color: "#9CA3AF", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 8 }}>Conteúdo</div>
+            <div style={sectionLabel}>Conteúdo</div>
             {mode === "view" ? (
               note.content ? (
-                <p style={{ fontSize: 14, color: "#374151", lineHeight: 1.8, whiteSpace: "pre-wrap" }}>{note.content}</p>
+                <p style={{ fontSize: 14, color: txt2, lineHeight: 1.8, whiteSpace: "pre-wrap" }}>{note.content}</p>
               ) : (
-                <p style={{ fontSize: 14, color: "#9CA3AF", fontStyle: "italic" }}>Sem conteúdo</p>
+                <p style={{ fontSize: 14, color: txtFaint, fontStyle: "italic" }}>Sem conteúdo</p>
               )
             ) : (
               <textarea
@@ -610,21 +640,21 @@ function NoteDrawer({ note, projects, onClose, onUpdate }: {
 
           {/* Tags */}
           <div>
-            <div style={{ fontSize: 11.5, fontWeight: 700, color: "#9CA3AF", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 8 }}>Tags</div>
+            <div style={sectionLabel}>Tags</div>
             {mode === "view" ? (
               note.tags.length > 0 ? (
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
                   {note.tags.map((tag) => (
                     <span key={tag} style={{
                       fontSize: 12.5, padding: "3px 10px", borderRadius: 20,
-                      background: "#F3F4F6", color: "#374151", fontWeight: 600,
+                      background: bgSec, color: txt2, fontWeight: 600,
                     }}>
                       #{tag}
                     </span>
                   ))}
                 </div>
               ) : (
-                <p style={{ fontSize: 13, color: "#9CA3AF" }}>Sem tags</p>
+                <p style={{ fontSize: 13, color: txtFaint }}>Sem tags</p>
               )
             ) : (
               <TagEditor tags={form.tags} onChange={(tags) => setForm((f) => ({ ...f, tags }))} />
@@ -634,11 +664,11 @@ function NoteDrawer({ note, projects, onClose, onUpdate }: {
           {/* Project */}
           {(note.project || (mode === "edit" && projects.length > 0)) && (
             <div>
-              <div style={{ fontSize: 11.5, fontWeight: 700, color: "#9CA3AF", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 8 }}>Projeto</div>
+              <div style={sectionLabel}>Projeto</div>
               {mode === "view" ? (
                 note.project ? (
-                  <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13.5, color: "#374151", fontWeight: 600 }}>
-                    <FolderKanban size={14} color="#6B7280" />
+                  <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13.5, color: txt2, fontWeight: 600 }}>
+                    <FolderKanban size={14} color={txtMuted} />
                     {note.project.name}
                   </div>
                 ) : null
@@ -660,20 +690,21 @@ function NoteDrawer({ note, projects, onClose, onUpdate }: {
           {showConvert && (
             <div style={{
               padding: 16, borderRadius: 12,
-              background: "#F0FDF4", border: "1px solid #BBF7D0",
+              background: dark ? "#0D2B1E" : "#F0FDF4",
+              border: dark ? "1px solid #1A4731" : "1px solid #BBF7D0",
             }}>
-              <div style={{ fontSize: 13, fontWeight: 700, color: "#166534", marginBottom: 12 }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: dark ? "#4ADE80" : "#166534", marginBottom: 12 }}>
                 Converter em Tarefa
               </div>
               {convertSuccess ? (
-                <div style={{ display: "flex", alignItems: "center", gap: 8, color: "#166534", fontSize: 13.5 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, color: dark ? "#4ADE80" : "#166534", fontSize: 13.5 }}>
                   <Check size={16} />
                   Tarefa criada com sucesso! A nota original foi mantida.
                 </div>
               ) : (
                 <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                   <div>
-                    <label style={{ fontSize: 12, fontWeight: 600, color: "#374151", display: "block", marginBottom: 4 }}>Prioridade</label>
+                    <label style={{ fontSize: 12, fontWeight: 600, color: txt2, display: "block", marginBottom: 4 }}>Prioridade</label>
                     <select className="input-base" value={convertForm.priority}
                       onChange={(e) => setConvertForm((f) => ({ ...f, priority: e.target.value }))}
                       style={{ fontSize: 13 }}>
@@ -684,7 +715,7 @@ function NoteDrawer({ note, projects, onClose, onUpdate }: {
                     </select>
                   </div>
                   <div>
-                    <label style={{ fontSize: 12, fontWeight: 600, color: "#374151", display: "block", marginBottom: 4 }}>Prazo (opcional)</label>
+                    <label style={{ fontSize: 12, fontWeight: 600, color: txt2, display: "block", marginBottom: 4 }}>Prazo (opcional)</label>
                     <input type="date" className="input-base"
                       value={convertForm.dueDate}
                       onChange={(e) => setConvertForm((f) => ({ ...f, dueDate: e.target.value }))}
@@ -692,7 +723,7 @@ function NoteDrawer({ note, projects, onClose, onUpdate }: {
                   </div>
                   {projects.length > 0 && (
                     <div>
-                      <label style={{ fontSize: 12, fontWeight: 600, color: "#374151", display: "block", marginBottom: 4 }}>Projeto (opcional)</label>
+                      <label style={{ fontSize: 12, fontWeight: 600, color: txt2, display: "block", marginBottom: 4 }}>Projeto (opcional)</label>
                       <select className="input-base" value={convertForm.projectId}
                         onChange={(e) => setConvertForm((f) => ({ ...f, projectId: e.target.value }))}
                         style={{ fontSize: 13 }}>
@@ -717,7 +748,7 @@ function NoteDrawer({ note, projects, onClose, onUpdate }: {
 
         {/* Footer actions */}
         <div style={{
-          padding: "14px 22px", borderTop: "1px solid #F3F4F6",
+          padding: "14px 22px", borderTop: `1px solid ${bord}`,
           display: "flex", gap: 6, flexWrap: "wrap",
           justifyContent: "space-between", alignItems: "center", flexShrink: 0,
         }}>
@@ -732,7 +763,7 @@ function NoteDrawer({ note, projects, onClose, onUpdate }: {
                   icon={note.isPinned ? <PinOff size={12} /> : <Pin size={12} />}
                   label={note.isPinned ? "Desfixar" : "Fixar"}
                   active={note.isPinned}
-                  activeBg="#FEF3C7" activeColor="#92400E"
+                  activeBg={dark ? "#2D2008" : "#FEF3C7"} activeColor={dark ? "#F59E0B" : "#92400E"}
                 />
                 <ActionBtn
                   onClick={() => doAction("archive")}
@@ -755,7 +786,7 @@ function NoteDrawer({ note, projects, onClose, onUpdate }: {
                   icon={<CheckCircle2 size={12} />}
                   label="Em tarefa"
                   active={showConvert}
-                  activeBg="#ECFDF5" activeColor="#166534"
+                  activeBg={dark ? "#0D2B1E" : "#ECFDF5"} activeColor={dark ? "#4ADE80" : "#166534"}
                 />
                 <ActionBtn
                   onClick={() => doAction("delete")}
@@ -796,6 +827,14 @@ function ActionBtn({ onClick, icon, label, loading, active, activeBg, activeColo
   activeColor?: string;
   danger?: boolean;
 }) {
+  const { dark } = useDark();
+  const defaultBg    = dark ? "#21262D" : "#F3F4F6";
+  const defaultColor = dark ? "#CDD5E0" : "#374151";
+  const dangerBg     = dark ? "#2D1010" : "#FEF2F2";
+  const dangerColor  = dark ? "#F87171" : "#DC2626";
+  const activeDefBg  = dark ? "#1A1D3A" : "#EEF2FF";
+  const activeDefClr = dark ? "#818CF8" : "#4338CA";
+
   return (
     <button
       onClick={onClick}
@@ -805,8 +844,8 @@ function ActionBtn({ onClick, icon, label, loading, active, activeBg, activeColo
         display: "flex", alignItems: "center", gap: 4,
         fontSize: 12.5, fontWeight: 600,
         padding: "7px 12px", borderRadius: 8,
-        background: danger ? "#FEF2F2" : active ? (activeBg ?? "#EEF2FF") : "#F3F4F6",
-        color: danger ? "#DC2626" : active ? (activeColor ?? "#4338CA") : "#374151",
+        background: danger ? dangerBg : active ? (activeBg ?? activeDefBg) : defaultBg,
+        color: danger ? dangerColor : active ? (activeColor ?? activeDefClr) : defaultColor,
         opacity: loading ? 0.6 : 1,
         transition: "background 0.12s",
       }}
@@ -819,6 +858,14 @@ function ActionBtn({ onClick, icon, label, loading, active, activeBg, activeColo
 // ── NotesModule ───────────────────────────────────────────────────────────────
 
 export default function NotesModule({ user }: { user: AppUser | null }) {
+  const { dark } = useDark();
+  const txt      = dark ? "#E6EDF3" : "#111827";
+  const txt2     = dark ? "#CDD5E0" : "#374151";
+  const txtMuted = dark ? "#8D96A0" : "#6B7280";
+  const txtFaint = dark ? "#8B949E" : "#9CA3AF";
+  const bgSec    = dark ? "#21262D" : "#F3F4F6";
+  const bord     = dark ? "#30363D" : "transparent";
+
   const [notes, setNotes] = useState<Note[]>([]);
   const [loading, setLoading] = useState(true);
   const [projects, setProjects] = useState<Project[]>([]);
@@ -869,10 +916,8 @@ export default function NotesModule({ user }: { user: AppUser | null }) {
     load();
   };
 
-  // All unique tags from current notes
   const allTags = Array.from(new Set(notes.flatMap((n) => n.tags))).sort();
 
-  // Client-side filtering
   const filtered = notes.filter((n) => {
     if (search) {
       const q = search.toLowerCase();
@@ -890,7 +935,6 @@ export default function NotesModule({ user }: { user: AppUser | null }) {
   const planLimit = user ? (PLANS[user.plan as keyof typeof PLANS]?.limits?.notes ?? 0) : 0;
   const atLimit = !!(user && notes.length >= planLimit);
 
-  // Live note for drawer (updated after reload)
   const liveNote = selectedNote ? (notes.find((n) => n.id === selectedNote.id) ?? selectedNote) : null;
 
   const clearFilters = () => { setSearch(""); setFilterTag(null); setFilterPinned(false); };
@@ -919,10 +963,10 @@ export default function NotesModule({ user }: { user: AppUser | null }) {
       {/* Header */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 18 }}>
         <div>
-          <h2 style={{ fontSize: 18, fontWeight: 800, color: "#111827" }}>
+          <h2 style={{ fontSize: 18, fontWeight: 800, color: txt }}>
             {showArchived ? "Anotações Arquivadas" : "Anotações"}
           </h2>
-          <p style={{ fontSize: 13, color: "#6B7280", marginTop: 2 }}>
+          <p style={{ fontSize: 13, color: txtMuted, marginTop: 2 }}>
             {notes.length} anotaç{notes.length === 1 ? "ão" : "ões"}
             {!showArchived && ` · limite: ${planLimit}`}
           </p>
@@ -933,9 +977,13 @@ export default function NotesModule({ user }: { user: AppUser | null }) {
             style={{
               all: "unset", cursor: "pointer", display: "flex", alignItems: "center", gap: 5,
               padding: "9px 14px", borderRadius: 9, fontSize: 13, fontWeight: 600,
-              background: showArchived ? "#F0F9FF" : "#F3F4F6",
-              color: showArchived ? "#0369A1" : "#4B5563",
-              border: `1.5px solid ${showArchived ? "#BAE6FD" : "transparent"}`,
+              background: showArchived
+                ? (dark ? "#0C1929" : "#F0F9FF")
+                : bgSec,
+              color: showArchived
+                ? (dark ? "#60A5FA" : "#0369A1")
+                : txtMuted,
+              border: `1.5px solid ${showArchived ? (dark ? "#1E3A5F" : "#BAE6FD") : bord}`,
             }}
           >
             {showArchived ? <ArchiveRestore size={14} /> : <Archive size={14} />}
@@ -956,7 +1004,7 @@ export default function NotesModule({ user }: { user: AppUser | null }) {
 
       {/* Limit warning */}
       {atLimit && !showArchived && (
-        <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 14px", background: "#FEF3C7", borderRadius: 9, marginBottom: 14, fontSize: 13, color: "#92400E" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 14px", background: dark ? "#2D2008" : "#FEF3C7", borderRadius: 9, marginBottom: 14, fontSize: 13, color: dark ? "#F59E0B" : "#92400E" }}>
           <AlertCircle size={14} /> Limite do plano atingido. Arquive notas antigas para liberar espaço.
         </div>
       )}
@@ -964,7 +1012,7 @@ export default function NotesModule({ user }: { user: AppUser | null }) {
       {/* Filter bar */}
       <div style={{ display: "flex", gap: 8, marginBottom: 20, flexWrap: "wrap", alignItems: "center" }}>
         <div style={{ position: "relative", flex: 1, minWidth: 200, maxWidth: 360 }}>
-          <Search size={13} color="#9CA3AF" style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)" }} />
+          <Search size={13} color={txtFaint} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)" }} />
           <input
             className="input-base"
             value={search}
@@ -992,21 +1040,21 @@ export default function NotesModule({ user }: { user: AppUser | null }) {
             style={{
               all: "unset", cursor: "pointer", display: "flex", alignItems: "center", gap: 5,
               padding: "8px 12px", borderRadius: 8, fontSize: 12.5, fontWeight: 600,
-              background: filterPinned ? "#FEF3C7" : "#F3F4F6",
-              color: filterPinned ? "#92400E" : "#6B7280",
-              border: `1.5px solid ${filterPinned ? "#FDE68A" : "transparent"}`,
+              background: filterPinned ? (dark ? "#2D2008" : "#FEF3C7") : bgSec,
+              color: filterPinned ? (dark ? "#F59E0B" : "#92400E") : txtMuted,
+              border: `1.5px solid ${filterPinned ? (dark ? "#4D3000" : "#FDE68A") : bord}`,
             }}
           >
-            <Pin size={12} fill={filterPinned ? "#F59E0B" : "none"} color={filterPinned ? "#F59E0B" : "#9CA3AF"} />
+            <Pin size={12} fill={filterPinned ? "#F59E0B" : "none"} color={filterPinned ? "#F59E0B" : txtFaint} />
             Fixadas
           </button>
         )}
 
         {anyFilter && (
           <button onClick={clearFilters} style={{
-            all: "unset", cursor: "pointer", fontSize: 12.5, color: "#6B7280",
+            all: "unset", cursor: "pointer", fontSize: 12.5, color: txtMuted,
             display: "flex", alignItems: "center", gap: 4, padding: "8px 10px",
-            borderRadius: 8, background: "#F3F4F6",
+            borderRadius: 8, background: bgSec,
           }}>
             <X size={12} /> Limpar
           </button>
@@ -1017,20 +1065,20 @@ export default function NotesModule({ user }: { user: AppUser | null }) {
       {loading ? (
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: 12 }}>
           {[1, 2, 3, 4, 5, 6].map((i) => (
-            <div key={i} style={{ height: 140, borderRadius: 12, background: "#F3F4F6" }} />
+            <div key={i} style={{ height: 140, borderRadius: 12, background: bgSec }} />
           ))}
         </div>
       ) : filtered.length === 0 ? (
         <div style={{ textAlign: "center", padding: "60px 0" }}>
-          <StickyNote size={44} color="#E5E7EB" style={{ margin: "0 auto 14px", display: "block" }} />
-          <p style={{ fontSize: 15, fontWeight: 600, color: "#6B7280", marginBottom: 6 }}>
+          <StickyNote size={44} color={dark ? "#30363D" : "#E5E7EB"} style={{ margin: "0 auto 14px", display: "block" }} />
+          <p style={{ fontSize: 15, fontWeight: 600, color: txt2, marginBottom: 6 }}>
             {anyFilter
               ? "Nenhuma anotação encontrada"
               : showArchived
                 ? "Nenhuma anotação arquivada"
                 : "Nenhuma anotação ainda"}
           </p>
-          <p style={{ fontSize: 13, color: "#9CA3AF" }}>
+          <p style={{ fontSize: 13, color: txtFaint }}>
             {anyFilter
               ? "Tente outros filtros"
               : showArchived
@@ -1039,12 +1087,11 @@ export default function NotesModule({ user }: { user: AppUser | null }) {
           </p>
         </div>
       ) : pinnedNotes.length > 0 && otherNotes.length > 0 ? (
-        // Two sections: pinned + others
         <>
           <div style={{ marginBottom: 24 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 10 }}>
               <Pin size={12} color="#F59E0B" fill="#F59E0B" />
-              <span style={{ fontSize: 11.5, fontWeight: 700, color: "#92400E", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+              <span style={{ fontSize: 11.5, fontWeight: 700, color: dark ? "#F59E0B" : "#92400E", textTransform: "uppercase", letterSpacing: "0.06em" }}>
                 Fixadas
               </span>
             </div>
@@ -1052,8 +1099,8 @@ export default function NotesModule({ user }: { user: AppUser | null }) {
           </div>
           <div>
             <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 10 }}>
-              <StickyNote size={12} color="#6B7280" />
-              <span style={{ fontSize: 11.5, fontWeight: 700, color: "#6B7280", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+              <StickyNote size={12} color={txtMuted} />
+              <span style={{ fontSize: 11.5, fontWeight: 700, color: txtMuted, textTransform: "uppercase", letterSpacing: "0.06em" }}>
                 Demais
               </span>
             </div>
@@ -1061,7 +1108,6 @@ export default function NotesModule({ user }: { user: AppUser | null }) {
           </div>
         </>
       ) : (
-        // Single grid (all pinned or all unpinned)
         <NoteGrid notes={filtered} onSelect={setSelectedNote} onPin={handlePin} onDelete={handleDelete} />
       )}
     </div>

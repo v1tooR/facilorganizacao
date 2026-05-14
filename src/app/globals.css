@@ -20,6 +20,62 @@
   --brand-gradient: linear-gradient(135deg, #FBBF24 0%, #F59E0B 45%, #EA580C 100%);
 }
 
+[data-theme="dark"] {
+  --bg: #0D1117;
+  --bg-secondary: #161B22;
+  --surface: #1C2128;
+  --surface-secondary: #21262D;
+  --border: #30363D;
+  --text-primary: #E6EDF3;
+  --text-secondary: #8D96A0;
+  --text-muted: #6E7681;
+}
+
+[data-theme="dark"] body {
+  background-color: var(--bg);
+  color: var(--text-primary);
+  color-scheme: dark;
+}
+
+/* ── Dark: CSS class overrides ── */
+[data-theme="dark"] .card {
+  background: var(--surface);
+  border-color: var(--border) !important;
+  box-shadow: 0 1px 3px 0 rgba(0,0,0,0.4) !important;
+}
+
+[data-theme="dark"] .input-base {
+  background: var(--bg) !important;
+  border-color: var(--border) !important;
+  color: var(--text-primary) !important;
+}
+[data-theme="dark"] .input-base::placeholder { color: var(--text-muted) !important; }
+[data-theme="dark"] .input-base:focus {
+  border-color: var(--brand-500) !important;
+  box-shadow: 0 0 0 3px rgba(245,158,11,0.18) !important;
+}
+
+[data-theme="dark"] .btn-secondary {
+  background: var(--surface) !important;
+  color: var(--text-primary) !important;
+  border-color: var(--border) !important;
+}
+[data-theme="dark"] .btn-secondary:hover {
+  background: var(--surface-secondary) !important;
+  border-color: #484F58 !important;
+}
+
+[data-theme="dark"] .badge-gray { background: #21262D; color: #8D96A0; }
+[data-theme="dark"] .badge-amber { background: #2D2008; color: #F59E0B; }
+[data-theme="dark"] .badge-green { background: #0D2B1E; color: #10B981; }
+[data-theme="dark"] .badge-red { background: #2D1010; color: #F87171; }
+[data-theme="dark"] .badge-blue { background: #0D1F3C; color: #60A5FA; }
+
+/* ── Dark: scrollbar ── */
+[data-theme="dark"] ::-webkit-scrollbar-track { background: var(--surface); }
+[data-theme="dark"] ::-webkit-scrollbar-thumb { background: #484F58; }
+[data-theme="dark"] ::-webkit-scrollbar-thumb:hover { background: #6E7681; }
+
 * { box-sizing: border-box; padding: 0; margin: 0; }
 
 html {
