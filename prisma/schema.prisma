@@ -1,6 +1,6 @@
 // Organização Fácil — Schema Prisma
-// Provider: MySQL / MariaDB
-// Valores monetários: DECIMAL(12,2) — nunca float
+// Provider: PostgreSQL (Supabase)
+// Valores monetários: Decimal — nunca float
 
 generator client {
   provider = "prisma-client"
@@ -8,7 +8,7 @@ generator client {
 }
 
 datasource db {
-  provider = "mysql"
+  provider = "postgresql"
 }
 
 // ─── Enums ────────────────────────────────────────────────────────────────
@@ -89,7 +89,7 @@ model User {
 model Task {
   id          String       @id @default(cuid())
   title       String       @db.VarChar(255)
-  description String?      @db.Text
+  description String?
   status      TaskStatus   @default(PENDING)
   priority    TaskPriority @default(MEDIUM)
   dueDate     DateTime?
@@ -117,9 +117,8 @@ model Task {
 model Project {
   id          String        @id @default(cuid())
   name        String        @db.VarChar(255)
-  description String?       @db.Text
+  description String?
   status      ProjectStatus @default(PLANNING)
-  // progress: 0–100, usado como fallback quando não há tarefas
   progress    Int           @default(0)
   startDate   DateTime?
   dueDate     DateTime?
@@ -141,19 +140,15 @@ model Project {
 model Note {
   id      String  @id @default(cuid())
   title   String  @db.VarChar(255)
-  content String  @db.Text
-  // color: código hex ou nome CSS, ex: "#FEF3C7"
+  content String
   color   String? @db.VarChar(30)
 
-  // V2: organização e estados
-  // tags: JSON array serializado, ex: ["ideia","urgente"]
-  tags       String?  @db.Text
-  isPinned   Boolean  @default(false)
-  isArchived Boolean  @default(false)
+  tags       String?
+  isPinned   Boolean   @default(false)
+  isArchived Boolean   @default(false)
   pinnedAt   DateTime?
   archivedAt DateTime?
 
-  // V2: vínculo opcional com projeto
   projectId String?
   project   Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
 
@@ -174,7 +169,7 @@ model FinanceEntry {
   id          String      @id @default(cuid())
   type        FinanceType
   title       String      @db.VarChar(255)
-  description String?     @db.Text
+  description String?
   // DECIMAL(12,2): suporta até R$ 9.999.999.999,99
   amount      Decimal     @db.Decimal(12, 2)
   occurredAt  DateTime

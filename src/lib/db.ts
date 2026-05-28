@@ -1,29 +1,15 @@
-/**
- * lib/db.ts
- *
- * Singleton do Prisma Client para Next.js com Prisma 7.
- *
- * Prisma 7 usa Driver Adapters para conexão direta ao banco.
- * Para MySQL/MariaDB, usamos @prisma/adapter-mariadb.
- * O adapter aceita a DATABASE_URL diretamente (string) e gerencia o pool.
- *
- * O padrão singleton evita múltiplas conexões durante o hot-reload
- * em desenvolvimento. Em produção, cada processo tem uma instância.
- */
-
 import { PrismaClient } from "@/generated/prisma/client";
-import { PrismaMariaDb } from "@prisma/adapter-mariadb";
+import { PrismaPg } from "@prisma/adapter-pg";
+import { Pool } from "pg";
 
 function createPrismaClient() {
   const databaseUrl = process.env.DATABASE_URL;
   if (!databaseUrl) {
-    throw new Error(
-      "DATABASE_URL não definido. Configure o arquivo .env com a string de conexão MySQL/MariaDB."
-    );
+    throw new Error("DATABASE_URL não definido.");
   }
 
-  // PrismaMariaDb aceita a URL diretamente e cria o pool de conexões internamente
-  const adapter = new PrismaMariaDb(databaseUrl);
+  const pool = new Pool({ connectionString: databaseUrl });
+  const adapter = new PrismaPg(pool);
 
   return new PrismaClient({
     adapter,
