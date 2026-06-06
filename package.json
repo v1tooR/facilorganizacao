@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "prisma generate && next build",
+    "prestart": "prisma generate && next build",
     "start": "node server.js",
     "lint": "eslint",
     "db:generate": "prisma generate",
@@ -16,6 +17,9 @@
   },
   "prisma": {
     "seed": "npx tsx prisma/seed.ts"
+  },
+  "engines": {
+    "node": ">=20.9.0"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.8.0",
