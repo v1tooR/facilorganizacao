@@ -2,13 +2,29 @@ import { PrismaClient } from "@/generated/prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { Pool } from "pg";
 
+function createPgPool(databaseUrl: string) {
+  const url = new URL(databaseUrl);
+  const sslMode = url.searchParams.get("sslmode");
+  const shouldUseSsl =
+    sslMode !== null ||
+    url.hostname.includes("supabase.com") ||
+    process.env.NODE_ENV === "production";
+
+  url.searchParams.delete("sslmode");
+
+  return new Pool({
+    connectionString: url.toString(),
+    ssl: shouldUseSsl ? { rejectUnauthorized: false } : undefined,
+  });
+}
+
 function createPrismaClient() {
   const databaseUrl = process.env.DATABASE_URL;
   if (!databaseUrl) {
     throw new Error("DATABASE_URL não definido.");
   }
 
-  const pool = new Pool({ connectionString: databaseUrl });
+  const pool = createPgPool(databaseUrl);
   const adapter = new PrismaPg(pool);
 
   return new PrismaClient({
