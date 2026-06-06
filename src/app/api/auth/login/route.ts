@@ -13,11 +13,35 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
 import { verifyPassword, createSession } from "@/lib/auth";
 import { LoginSchema } from "@/lib/validations";
 
 const INVALID_CREDENTIALS_MSG = "E-mail ou senha incorretos.";
+
+function getLoginErrorCode(error: unknown) {
+  const message = error instanceof Error ? error.message : "";
+  const record = error && typeof error === "object" ? error as Record<string, unknown> : {};
+  const code = typeof record.code === "string" ? record.code : "";
+  const lowerMessage = message.toLowerCase();
+
+  if (message.includes("DATABASE_URL") || message.includes("JWT_SECRET")) {
+    return "AUTH_CONFIG_ERROR";
+  }
+
+  if (
+    code.startsWith("P1") ||
+    code === "ECONNREFUSED" ||
+    code === "ENOTFOUND" ||
+    code === "ETIMEDOUT" ||
+    code === "42P01" ||
+    lowerMessage.includes("database") ||
+    lowerMessage.includes("relation")
+  ) {
+    return "AUTH_DATABASE_ERROR";
+  }
+
+  return "AUTH_INTERNAL_ERROR";
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -41,6 +65,7 @@ export async function POST(request: NextRequest) {
     }
 
     const { email, password } = parsed.data;
+    const { db } = await import("@/lib/db");
 
     // 2. Buscar usuário — sempre busca mesmo se e-mail não existir
     //    para evitar timing attack revelando existência de conta
@@ -84,9 +109,10 @@ export async function POST(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error("[POST /api/auth/login]", error);
+    const code = getLoginErrorCode(error);
+    console.error("[POST /api/auth/login]", code, error);
     return NextResponse.json(
-      { error: "Erro interno. Tente novamente." },
+      { error: "Erro interno. Tente novamente.", code },
       { status: 500 }
     );
   }
